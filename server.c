@@ -22,7 +22,7 @@ static _Atomic unsigned int cli_count = 0;
 // id of Client
 static int uid = 0;
 
-DoubleLink *listRoom[MAX_ROOM];
+DoubleLink *listRoom[MAX_ROOM] = {};
 
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -46,7 +46,6 @@ void send_message(char *s, int uid){
 	pthread_mutex_lock(&clients_mutex);
 
 	Node *run;
-
 	// Cần xem lại vòng lặp 
 	// need what is room
 	for(int i = 0; i < MAX_ROOM; i++){
@@ -54,7 +53,7 @@ void send_message(char *s, int uid){
 			run = listRoom[i]->head;
 			while (run != NULL) {
 				if (run->client.uid != uid) {
-					if (send(run->client.uid, s, strlen(s), 0) <= 0) {
+					if (send(run->client.sockfd, s, strlen(s), 0) <= 0) {
 						perror("ERROR: write to descriptor failed");
 						break;
 					}
@@ -202,5 +201,6 @@ int main(int argc, char **argv){
 		sleep(1);
 	}
 
+	free(room1);
 	return EXIT_SUCCESS;
 }

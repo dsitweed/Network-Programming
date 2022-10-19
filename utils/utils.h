@@ -52,7 +52,7 @@ int isEmpty(const DoubleLink* link) {
 
 void insertAtHead(DoubleLink* link, client_t cl) {
     Node* newNode = createNode(cl);
-    if (link->head != NULL) {
+    if (link->head == NULL) {
         link->head = newNode;
         link->tail = newNode;
     } else {
@@ -74,6 +74,19 @@ void deleteClient(DoubleLink *link, int clientId) {
             return;
         }
         run = run->next;
+    }
+}
+
+void printNode(Node *node) {
+    client_t cli = node->client;
+    printf("Name: %s\n", cli.name);
+    printf("ID: %d\n", cli.uid);
+}
+
+void traverse(DoubleLink *link) {
+    Node *run = link->head;
+    while (run != NULL) {
+        printNode(run);
     }
 }
 
