@@ -18,6 +18,9 @@ volatile sig_atomic_t flag = 0;
 int sockfd = 0; // socket of this client
 char name[32];
 
+char typingBuffer[LENGTH];
+pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER; 
+
 // Delete \n when use fgets
 void str_trim_lf (char *arr);
 void catch_ctrl_c_and_exit(int sig);
@@ -25,7 +28,7 @@ void catch_ctrl_c_and_exit(int sig);
 void erase_line_text();
 void send_msg_handler();
 void recv_msg_handler();
-
+void readToEndline(char *user_input);
 
 int main(int argc, char **argv){
 	if(argc != 2){
@@ -124,8 +127,10 @@ void send_msg_handler() {
 
 	while(1) {
 		printf("> You: ");
-		fgets(message, LENGTH, stdin);
+		readToEndline(message);
 		str_trim_lf(message);
+		printf("%s\n", message);
+		// strcpy(typingBuffer, message);
 
 		if (strcmp(message, "exit") == 0) {
 				break;
@@ -142,18 +147,28 @@ void send_msg_handler() {
 
 void recv_msg_handler() {
 	char message[LENGTH] = {};
-  while (1) {
+	while (1) {
 		int receive = recv(sockfd, message, LENGTH, 0);
-    if (receive > 0) {
-		erase_line_text(); 
-		printf("> %s", message);
-		printf("> You: ");
-		fflush(stdout);
-    } else if (receive == 0) {
-			break;
-    } else {
-			// -1
+		
+		if (receive > 0) {
+			erase_line_text(); 
+			printf("> %s", message);
+			printf("> You: ");
+			fflush(stdout);
+		} else if (receive == 0) {
+				break;
+		} else {
+				// -1
+		}
+		memset(message, 0, sizeof(message));
 	}
-	memset(message, 0, sizeof(message));
-  }
+}
+
+void readToEndline(char *user_input) {
+	int user_input_index = 0;
+	char c;
+	do {
+		c = getch();
+		user_input[user_input_index++] = c;
+	} while (c != '\n');
 }
