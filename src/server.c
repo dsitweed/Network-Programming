@@ -13,6 +13,7 @@
 #include "jrb.h"
 #include "jval.h"
 #include "utils.h"
+#include "protocol.h"
 
 #define MAX_THREADS 10
 #define MAX_ROOMS 100
@@ -30,6 +31,7 @@ typedef struct client {
 // Tránh xung đột tranh dành ghi dữ liệu
 // (Kiểu 2 thàng cùng cli_count++ (0 -> 1 trong khi có 2 đứa))
 static _Atomic unsigned int cli_count = 0;
+static _Atomic JRB accounts;
 static int client_id = 0;
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 JRB clients;
@@ -38,12 +40,45 @@ void *handle_client(void *arg);
 void send_message(char *s, int uid);
 void print_client_addr(struct sockaddr_in addr);
 
+int auth_account(char *buff_out) {
+    JRB node;
+    Account acc;
+    int type;
+
+    // get account info
+    sscanf(buff_out, "%d %s %s", &type, acc.username, acc.password);
+    // printf("%s %s\n", acc.username, acc.password);
+
+    if (type != SIGN_IN) return 0;
+    node = jrb_find_str(accounts, acc.username);
+    if (node == NULL) return 0; // auth failed
+    Account *buff = (Account *) jval_v(node->val);
+    if (strcmp(buff->password, acc.password) != 0) return 0;
+    printf("%s %d\n", buff->username, buff->accStatus);
+
+    return 1;
+}
+
+int getAccList() {
+    FILE *accFile = fopen("account.txt", "rt");
+    if (accFile == NULL) return 0;
+    while (1) {
+        Account *acc = (Account *)malloc(sizeof(Account));
+        if (fscanf(accFile, "%s %s %d\n", acc->username, acc->password, &acc->accStatus) == EOF) break;
+        jrb_insert_str(accounts, acc->username, new_jval_v(acc));
+    }
+
+    fclose(accFile);
+    return 1;
+}
+
 int main(int argc, char const *argv[]) {
     if (argc != 2) {
         printf("Usage: %s <port>\n", argv[0]);
         return EXIT_FAILURE;
     }
 
+    JRB node;  // tree of accounts saved in server
     char *IP = "127.0.0.1";
     int PORT = atoi(argv[1]);
     int option = 1;
@@ -51,8 +86,22 @@ int main(int argc, char const *argv[]) {
     struct sockaddr_in serv_addr;
     struct sockaddr_in cli_addr;
     pthread_t thread_id;
+    Account *acc = (Account*) malloc(sizeof(Account));
+    Account *x;
 
     clients = make_jrb();
+
+    // get account list from FIle
+    accounts = make_jrb();
+    if (getAccList() == 0) {
+        printf("Read input account file error!\n");
+        PRINT_ERROR;
+        return EXIT_FAILURE;
+    }
+    // jrb_traverse(node, accounts) {
+    //     acc = (Account*) jval_v(node->val);
+    //     printf("%s - %s - %d\n", acc->username, acc->password, acc->accStatus);
+    // }
 
     /*Socket settings*/
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -111,8 +160,8 @@ int main(int argc, char const *argv[]) {
         JRB node;
         int i = 0;
         jrb_traverse(node, clients) {
-            Client cli = (Client) jval_v(node->val);
-            printf("%d %d\n",i ,cli->id);
+            Client cli = (Client)jval_v(node->val);
+            printf("%d %d\n", i, cli->id);
         }
         pthread_create(&thread_id, NULL, handle_client, client);
         /* Reduce CPU usage */
@@ -123,21 +172,30 @@ int main(int argc, char const *argv[]) {
 }
 
 void *handle_client(void *arg) {
-    Client cli = (Client) arg;  // client - is a poiter
-    char buff_out[BUFF_SIZE + CLIENT_NAME_LEN + 3];
+    Client cli = (Client)arg;  // client - is a poiter
+    Account acc;
+    char buff_out[BUFF_SIZE + CLIENT_NAME_LEN + 3] = {0};
     char name[CLIENT_NAME_LEN];
     int leave_flag = 0;
 
+    int err = 0;
+
     cli_count++;
 
-    // receive name
-    if (recv(cli->sockfd, name, CLIENT_NAME_LEN, 0) <= 0 || strlen(name) < 2 || strlen(name) >= CLIENT_NAME_LEN - 1) {
-        printf("Didn't enter the name. %s\n", name);
+    // receive requets login
+    err = recv(cli->sockfd, buff_out, sizeof(buff_out), 0);
+    if (err >= 0){
+        err = auth_account(buff_out);
+    } else leave_flag = 1;
+
+    if (err == 0) {
+        printf("Login failed!\n");
         leave_flag = 1;
-    } else {
-        strcpy(cli->username, name);
-        sprintf(buff_out, "%s has joined", cli->username);
-        printf("%s\n", buff_out);
+    }
+    else {
+        printf("Login success\n");
+        send(cli->sockfd, "Login success", BUFF_SIZE, 0);
+        leave_flag = 1;
     }
 
     bzero(buff_out, sizeof(buff_out));
@@ -185,7 +243,7 @@ void send_message(char *s, int cli_id) {
     pthread_mutex_lock(&clients_mutex);
     JRB node;
     jrb_traverse(node, clients) {
-        Client cli = (Client) jval_v(node->val);
+        Client cli = (Client)jval_v(node->val);
         if (cli->id != cli_id) {
             send(cli->sockfd, s, strlen(s), 0);
         }
@@ -195,8 +253,6 @@ void send_message(char *s, int cli_id) {
 }
 
 void print_client_addr(struct sockaddr_in addr) {
-    printf("%d.%d.%d.%d", addr.sin_addr.s_addr & 0xff, 
-        (addr.sin_addr.s_addr & 0xff00) >> 8,
-        (addr.sin_addr.s_addr & 0xff0000) >> 16, 
-        (addr.sin_addr.s_addr & 0xff000000) >> 24);
+    printf("%d.%d.%d.%d", addr.sin_addr.s_addr & 0xff, (addr.sin_addr.s_addr & 0xff00) >> 8,
+           (addr.sin_addr.s_addr & 0xff0000) >> 16, (addr.sin_addr.s_addr & 0xff000000) >> 24);
 }

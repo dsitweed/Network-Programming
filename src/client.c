@@ -1,16 +1,17 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>
 #include <pthread.h>
 #include <signal.h>  // signal
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
 #include "jrb.h"
 #include "jval.h"
+#include "protocol.h"
 #include "utils.h"
 
 /*
@@ -34,6 +35,60 @@ void signal_handler(int sig);
 void send_msg_handler();
 void recv_msg_handler();
 
+// return 0 error; return 1 success
+int auth_menu(int sockfd) {
+    int menu;
+    int err = 0;
+    char buff[BUFF_SIZE] = {0};
+    Account acc;
+    do {
+        printf(
+            "===== THE CHATROOM LOGIN SCREEN ===== \n"
+            "1. Register\n"
+            "2. Sign in \n"
+            "3. Search\n"
+            "4. Sign out\n"
+            "Your choice (1-4, other to quit): ");
+        scanf("%d%*c",&menu);
+        switch (menu) {
+            case 1:
+                printf("SIGN IN\n");
+                printf("Nhap username: ");
+                fgets(acc.username, sizeof(acc.username), stdin);
+                str_trim_lf(acc.username);
+                printf("Nhap Password: ");
+                fgets(acc.password, sizeof(acc.password), stdin);
+                str_trim_lf(acc.password);
+                
+                break;
+            case 2:
+                printf("SIGN IN\n");
+                printf("Nhap username: ");
+                fgets(acc.username, sizeof(acc.username), stdin);
+                str_trim_lf(acc.username);
+                printf("Nhap Password: ");
+                fgets(acc.password, sizeof(acc.password), stdin);
+                str_trim_lf(acc.password);
+
+                bzero(buff, sizeof(buff));
+                sprintf(buff, "%d %s %s", SIGN_IN, acc.username, acc.password);
+                err = send(sockfd, buff, strlen(buff), 0);
+                err = recv(sockfd, buff, sizeof(buff), 0);
+                if (err >= 0) printf("Result: %s\n\n", buff);
+                else {
+                    printf("Error received login request from server\n\n");
+                    PRINT_ERROR;
+                }
+                break;
+            case 5:
+                return 0;
+                break;
+            default:
+                break;
+        }  // end switch
+    } while (menu != 5);
+}
+
 int main(int argc, char const *argv[]) {
     if (argc != 2) {
         printf("Usage: %s <port>\n", argv[1]);
@@ -41,23 +96,16 @@ int main(int argc, char const *argv[]) {
     }
 
     int err;
+    char buff[BUFF_SIZE] = {0};
 
     struct sockaddr_in server_addr;
     pthread_t send_mesg_thread;
     pthread_t recv_mesg_thread;
     char *IP = "127.0.0.1";
     int PORT = atoi(argv[1]);
+    Account acc;
 
     signal(SIGINT, signal_handler);
-
-    printf("Please enter your name: ");
-    fgets(clientName, sizeof(clientName), stdin);
-    str_trim_lf(clientName);
-
-    if (strlen(clientName) > 32 || strlen(clientName) < 2) {
-        printf("Name must be less than 30 and more than 2 characters.\n");
-        return EXIT_FAILURE;
-    }
 
     /*Socket settings*/
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -69,13 +117,17 @@ int main(int argc, char const *argv[]) {
     err = connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
     if (err == -1) {
         printf("ERROR: connect\n");
+        close(sockfd);
         return EXIT_FAILURE;
     }
-    /*Send name*/
-    err = send(sockfd, clientName, CLIENT_NAME_LEN, 0);
-    printf("Send: %d\n", err);
 
-    printf("=== WELCOME TO THE CHATROOM ===\n");
+    /* Check login */
+    err = auth_menu(sockfd);
+    if (err == 0) exit_flag = 1;
+    return 0;
+
+    //
+    printf("===== WELCOME TO THE CHATROOM =====\n");
 
     if (pthread_create(&send_mesg_thread, NULL, (void *)send_msg_handler, NULL) != 0) {
         printf("ERROR: pthread\n");
@@ -94,7 +146,7 @@ int main(int argc, char const *argv[]) {
         }
     }
 
-    close(sockfd); // have to close socket
+    close(sockfd);  // have to close socket
     return EXIT_SUCCESS;
 }
 
@@ -102,7 +154,7 @@ void signal_handler(int sig) { exit_flag = 1; }
 
 void send_msg_handler() {
     char message[BUFF_SIZE];
-    char buffer[BUFF_SIZE + CLIENT_NAME_LEN + 3];// = message + name of user + 3 (for 3 time \0)
+    char buffer[BUFF_SIZE + CLIENT_NAME_LEN + 3];  // = message + name of user + 3 (for 3 time \0)
 
     while (1) {
         printf("> You: ");
@@ -114,7 +166,7 @@ void send_msg_handler() {
         } else {
             sprintf(buffer, "%s: %s", clientName, message);
             send(sockfd, buffer, strlen(buffer), 0);
-        }// end send message
+        }  // end send message
 
         bzero(message, sizeof(message));
         bzero(buffer, sizeof(buffer));

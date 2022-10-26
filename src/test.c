@@ -7,17 +7,28 @@
 #include "utils.h"
 
 int main(int argc, char const *argv[]) {
-    Client cli1 = (Client) malloc(sizeof(struct client));
+    Client cli1 = (Client)malloc(sizeof(struct client));
     JRB node, clients = make_jrb();
-    cli1->id = 1;
-
-    jrb_insert_int(clients, cli1->id, new_jval_v(cli1));
-
-    jrb_traverse(node, clients) {
-        Client buff = (Client) jval_v(node->val);
-        printf("Id: %d\n", buff->id);
+    JRB accounts = make_jrb();
+    
+    FILE *accFile = fopen("./account.txt", "rt");
+    if (accFile == NULL) {
+        printf("Cannot open %s\n", "account.txt");
+        PRINT_ERROR;
+        return EXIT_FAILURE;
     }
-    char test[BUFF_SIZE] = {0};
+
+    while (1) {
+        Account *acc = (Account *) malloc(sizeof(Account));
+        if (fscanf(accFile, "%s %s %d\n", acc->username, acc->password, &acc->accStatus) == EOF) break;
+        printf("%s %s %d\n", acc->username, acc->password, acc->accStatus);
+        jrb_insert_str(accounts, acc->username, new_jval_v(acc));
+    }
+
+    jrb_traverse(node, accounts) {
+        Account *acc1 = (Account *)(jval_v(node->val));
+        printf("%s - %s - %d\n", acc1->username, acc1->password, acc1->accStatus);
+    }
     printf("Test\n");
 
     return 0;

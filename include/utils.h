@@ -22,6 +22,12 @@ typedef struct client {
     char username[CLIENT_NAME_LEN];
 } * Client;  // client is poiter
 
+typedef struct account_ {
+    char username[CLIENT_NAME_LEN];
+    char password[CLIENT_NAME_LEN];
+    int accStatus;
+} Account;
+
 int prompt_input(char const *message, char *buff);
 
 void str_trim_lf(char *arr);
@@ -33,7 +39,7 @@ void clear_line();
 Client make_client(/* struct sockaddr_in addr, */ int fd, int id, char *username);
 
 /*
-    Cần xem xét lại về tính thực tế của hàm này 
+    Cần xem xét lại về tính thực tế của hàm này
 */
 int config_server(int *fd, struct sockaddr_in *addr);
 
