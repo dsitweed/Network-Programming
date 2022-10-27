@@ -1,5 +1,6 @@
-hedspi1 hedpsi2016 0 
-hust hust123 1
-soict soictfit 1 
-huy 123 1
-123 123 1
+hedspi1 hedpsi2016
+hust hust123
+soict soictfit 
+huy 123
+123 123
+345 345

@@ -10,8 +10,14 @@ enum msg_type {
     INVITE_JOIN_ROOM,
     CONTACT,
 
+    AUTH_SCREEEN,
+    SELECT_ROOM_SCREEN,
+    CHAT_IN_ROOM_SCREEN,
+
     SUCCESS,
-    ERROR
+    FAILED,
+    ERROR,
+    EXIT,
 };
 
 
@@ -30,7 +36,6 @@ struct message_ {
 typedef struct message_ Message;
 
 void send_protocol() {
-    Message mess;
     // 1 username password
 }
 

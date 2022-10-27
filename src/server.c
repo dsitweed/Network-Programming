@@ -12,8 +12,8 @@
 
 #include "jrb.h"
 #include "jval.h"
-#include "utils.h"
 #include "protocol.h"
+#include "utils.h"
 
 #define MAX_THREADS 10
 #define MAX_ROOMS 100
@@ -40,21 +40,87 @@ void *handle_client(void *arg);
 void send_message(char *s, int uid);
 void print_client_addr(struct sockaddr_in addr);
 
-int auth_account(char *buff_out) {
+void appendToFile(char *fileName, char *string) {
+    FILE *p = fopen(fileName, "a");
+    fprintf(p, "\n%s", string);
+    fclose(p);
+}
+
+int auth_screen(Client client, char *buff_out) {
     JRB node;
-    Account acc;
-    int type;
+    Account *acc = (Account *) malloc(sizeof(Account));
+    int logined_flag = 0;
+    int type, exit_flag = 0;
+    char buff[BUFF_SIZE] = {0};
 
-    // get account info
-    sscanf(buff_out, "%d %s %s", &type, acc.username, acc.password);
-    // printf("%s %s\n", acc.username, acc.password);
+    // get type
+    sscanf(buff_out, "%d", &type);
 
-    if (type != SIGN_IN) return 0;
-    node = jrb_find_str(accounts, acc.username);
-    if (node == NULL) return 0; // auth failed
-    Account *buff = (Account *) jval_v(node->val);
-    if (strcmp(buff->password, acc.password) != 0) return 0;
-    printf("%s %d\n", buff->username, buff->accStatus);
+    if (type != SIGN_IN && type != SIGN_UP && type != SIGN_OUT) exit_flag = 1;
+
+    if (type != SIGN_OUT) {
+        sscanf(buff_out, "%d %s %s", &type, acc->username, acc->password);
+    } else {
+        sscanf(buff_out, "%d %s", &type, acc->username);
+    }
+    printf("%s %s\n", acc->username, acc->password);
+
+    switch (type) {
+        case SIGN_IN:
+            node = jrb_find_str(accounts, acc->username);
+
+            if (node == NULL) {
+                printf("Login failed\n");
+                bzero(buff, sizeof(buff));
+                sprintf(buff, "%d", FAILED);
+                send(client->sockfd, buff, strlen(buff), 0);
+                return 0;
+            }
+
+            Account * findedAcc = (Account *) jval_v(node->val);
+            bzero(buff, sizeof(buff));
+
+            if (strcmp(findedAcc->password, acc->password) != 0) {
+                printf("Login failed\n");
+                sprintf(buff, "%d", FAILED);
+                send(client->sockfd, buff, strlen(buff), 0);
+                return 0;
+            }
+
+            printf("%s has logined\n", acc->username);
+            sprintf(buff, "%d", SUCCESS);
+            send(client->sockfd, buff, strlen(buff), 0);
+            return 1;
+        case SIGN_OUT:
+            node = jrb_find_int(clients, client->id);
+            if (node == NULL) return 0;
+
+            jrb_delete_node(node);
+            cli_count--;
+            return 1;
+            break;
+        case SIGN_UP:
+            node = jrb_find_str(accounts, acc->username);
+            bzero(buff, sizeof(buff));
+
+            if (node != NULL) {
+                printf("Failed\n");
+                sprintf(buff, "%d", FAILED);
+                send(client->sockfd, buff, strlen(buff), 0);
+                return 0;
+            }
+            
+            jrb_insert_str(accounts, acc->username, new_jval_v(acc));
+            sprintf(buff, "%s %s", acc->username, acc->password);   
+            appendToFile("account.txt", buff);
+            
+            bzero(buff, sizeof(buff));
+            sprintf(buff, "%d", SUCCESS);
+            send(client->sockfd, buff, strlen(buff), 0);
+            break;
+        default:
+            break;
+    }
 
     return 1;
 }
@@ -86,8 +152,7 @@ int main(int argc, char const *argv[]) {
     struct sockaddr_in serv_addr;
     struct sockaddr_in cli_addr;
     pthread_t thread_id;
-    Account *acc = (Account*) malloc(sizeof(Account));
-    Account *x;
+    Account *acc = (Account *)malloc(sizeof(Account));
 
     clients = make_jrb();
 
@@ -150,7 +215,7 @@ int main(int argc, char const *argv[]) {
         }
 
         /* Client settings */
-        Client client = (Client) malloc(sizeof(struct client));
+        Client client = (Client)malloc(sizeof(struct client));
         client->addr = cli_addr;
         client->sockfd = connfd;
         client->id = client_id++;
@@ -173,65 +238,65 @@ int main(int argc, char const *argv[]) {
 
 void *handle_client(void *arg) {
     Client cli = (Client)arg;  // client - is a poiter
-    Account acc;
-    char buff_out[BUFF_SIZE + CLIENT_NAME_LEN + 3] = {0};
-    char name[CLIENT_NAME_LEN];
+    JRB node;
+    char buff_out[BUFF_SIZE + CLIENT_NAME_LEN + 3] = {0};  // save send string from clients
     int leave_flag = 0;
+    int type = -1;  // type of mess send from clients
 
-    int err = 0;
+    int err = 0;  // read recvbytes or read err number
 
     cli_count++;
 
-    // receive requets login
-    err = recv(cli->sockfd, buff_out, sizeof(buff_out), 0);
-    if (err >= 0){
-        err = auth_account(buff_out);
-    } else leave_flag = 1;
-
-    if (err == 0) {
-        printf("Login failed!\n");
-        leave_flag = 1;
-    }
-    else {
-        printf("Login success\n");
-        send(cli->sockfd, "Login success", BUFF_SIZE, 0);
-        leave_flag = 1;
-    }
-
     bzero(buff_out, sizeof(buff_out));
 
+    /* Loop communicate with clients */
     while (1) {
         if (leave_flag == 1) break;
 
+        /* received navigate screen control */
         int received = recv(cli->sockfd, buff_out, sizeof(buff_out), 0);
+        // printf("received: %d; buffsize:  %ld\n", received, strlen(buff_out));
         /*
             continue read if have
         */
-        // printf("received: %d; buffsize:  %ld\n", received, strlen(buff_out));
-        if (received > 0) {
-            if (strlen(buff_out) > 0) {
-                send_message(buff_out, cli->id);
-                printf("%s -> %s\n", buff_out, cli->username);
-            } else if (received == 0 || strcmp(buff_out, "exit") == 0) {
-                sprintf(buff_out, "%s has left", cli->username);
-                printf("%s\n", buff_out);
-                send_message(buff_out, cli->id);
-                leave_flag = 1;
-            } else {
-                PRINT_ERROR;
-                leave_flag = 1;
-            }
+        sscanf(buff_out, "%d", &type);
+        switch (type) {
+            case AUTH_SCREEEN:
+                received = recv(cli->sockfd, buff_out, sizeof(buff_out), 0);
+                err = auth_screen(cli, buff_out);
+                break;
+            case SELECT_ROOM_SCREEN:
+                break;
+            case CHAT_IN_ROOM_SCREEN:
+                break;
+            default:
+                break;
+        }
 
-            bzero(buff_out, sizeof(buff_out));
+        // if (received > 0) {
+        //     if (strlen(buff_out) > 0) {
+        //         send_message(buff_out, cli->id);
+        //         printf("%s -> %s\n", buff_out, cli->username);
+        //     } else if (received == 0 || strcmp(buff_out, "exit") == 0) {
+        //         sprintf(buff_out, "%s has left", cli->username);
+        //         printf("%s\n", buff_out);
+        //         send_message(buff_out, cli->id);
+        //         leave_flag = 1;
+        //     } else {
+        //         PRINT_ERROR;
+        //         leave_flag = 1;
+        //     }
 
-        }  // end if recv no error
-    }      // end while - client communicate with server
+        //     bzero(buff_out, sizeof(buff_out));
+        // }  // end if recv no error
+    }  // end while - client communicate with server
 
     /* Delete client from List and yield thread */
     close(cli->sockfd);
-    /*
-        delete client from List
-    */
+    /* delete client from List */
+    node = jrb_find_int(clients, cli->id);
+    jrb_delete_node(node);
+
     cli_count--;
     pthread_detach(pthread_self());
 

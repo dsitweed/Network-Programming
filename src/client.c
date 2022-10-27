@@ -35,55 +35,78 @@ void signal_handler(int sig);
 void send_msg_handler();
 void recv_msg_handler();
 
-// return 0 error; return 1 success
+// return 0 error
+// return 1 -> ... is success
 int auth_menu(int sockfd) {
-    int menu;
-    int err = 0;
+    int menu, err = 0;
     char buff[BUFF_SIZE] = {0};
+    int response;
     Account acc;
+
+    /* received navigate screen control */
+
     do {
+        bzero(buff, sizeof(buff));
+        sprintf(buff, "%d", AUTH_SCREEEN);
+        send(sockfd, buff, strlen(buff), 0);
+
         printf(
             "===== THE CHATROOM LOGIN SCREEN ===== \n"
-            "1. Register\n"
+            "1. Register - Sign up\n"
             "2. Sign in \n"
-            "3. Search\n"
-            "4. Sign out\n"
-            "Your choice (1-4, other to quit): ");
-        scanf("%d%*c",&menu);
+            "3. Exit\n"
+            "Your choice (1-3): ");
+        scanf("%d%*c", &menu);
         switch (menu) {
             case 1:
-                printf("SIGN IN\n");
-                printf("Nhap username: ");
-                fgets(acc.username, sizeof(acc.username), stdin);
-                str_trim_lf(acc.username);
-                printf("Nhap Password: ");
-                fgets(acc.password, sizeof(acc.password), stdin);
-                str_trim_lf(acc.password);
+                printf("SIGN UP\n");
+                prompt_input_ver2("Nhap username: ", acc.username);
+                prompt_input_ver2("Nhap password: ", acc.password);
+
+                bzero(buff, sizeof(buff));
+                sprintf(buff, "%d %s %s", SIGN_UP, acc.username, acc.password);
+                send(sockfd, buff, strlen(buff), 0);
                 
+                bzero(buff, sizeof(buff));
+                err = recv(sockfd, buff, sizeof(buff), 0);
+                if (err >= 0) {
+                    response = atoi(buff);
+                    if (response == SUCCESS) {
+                        printf("success\n");
+                    }
+                    if (response == FAILED) {
+                        printf("failed\n");
+                    }
+                } 
                 break;
             case 2:
                 printf("SIGN IN\n");
-                printf("Nhap username: ");
-                fgets(acc.username, sizeof(acc.username), stdin);
-                str_trim_lf(acc.username);
-                printf("Nhap Password: ");
-                fgets(acc.password, sizeof(acc.password), stdin);
-                str_trim_lf(acc.password);
+                prompt_input_ver2("Nhap username: ", acc.username);
+                prompt_input_ver2("Nhap password: ", acc.password);
 
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d %s %s", SIGN_IN, acc.username, acc.password);
                 err = send(sockfd, buff, strlen(buff), 0);
+
+                bzero(buff, sizeof(buff));
                 err = recv(sockfd, buff, sizeof(buff), 0);
-                if (err >= 0) printf("Result: %s\n\n", buff);
-                else {
-                    printf("Error received login request from server\n\n");
-                    PRINT_ERROR;
-                }
+                printf("%s - %ld\n", buff, strlen(buff));
+                if (err >= 0) {
+                    response = atoi(buff);
+                    if (response == SUCCESS) {
+                        printf("success\n");
+                        return 1;
+                    }
+                    if (response == FAILED) {
+                        printf("failed\n");
+                    }
+                } else printf("Error\n");
                 break;
-            case 5:
+            case 3:
                 return 0;
                 break;
             default:
+                printf("Please select valid options\n");
                 break;
         }  // end switch
     } while (menu != 5);
@@ -121,7 +144,7 @@ int main(int argc, char const *argv[]) {
         return EXIT_FAILURE;
     }
 
-    /* Check login */
+    /* Check login - Auth_screen */
     err = auth_menu(sockfd);
     if (err == 0) exit_flag = 1;
     return 0;
