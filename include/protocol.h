@@ -4,10 +4,13 @@ enum msg_type {
     SIGN_IN,
     SIGN_UP,
     SIGN_OUT,
-    CREATE_ROOM,
+    CREATE_NEW_ROOM,
     JOIN_ROOM,
     OUT_ROOM,
     INVITE_JOIN_ROOM,
+    SHOW_LIST_ROOMS,
+    SHOW_LIST_USERS, // user is online - logined
+    PVP_CHAT,
     CONTACT,
 
     AUTH_SCREEEN,

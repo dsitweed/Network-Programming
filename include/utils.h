@@ -28,6 +28,11 @@ typedef struct account_ {
     int accStatus;
 } Account;
 
+typedef struct room_ {
+    char owner_name[CLIENT_NAME_LEN];
+    Client list_guest[100];
+} Room;
+
 int prompt_input(char const *message, char *buff); // Cấp phát động bộ nhớ cho buff
 int prompt_input_ver2(char const *message, char *buff);// Buff bộ nhớ cố định 
 

@@ -43,15 +43,14 @@ int auth_menu(int sockfd) {
     int response;
     Account acc;
 
-    /* received navigate screen control */
-
+    /* send navigate screen control */
     do {
         bzero(buff, sizeof(buff));
         sprintf(buff, "%d", AUTH_SCREEEN);
         send(sockfd, buff, strlen(buff), 0);
 
         printf(
-            "===== THE CHATROOM LOGIN SCREEN ===== \n"
+            "===== THE CHATROOM AUTH SCREEN ===== \n"
             "1. Register - Sign up\n"
             "2. Sign in \n"
             "3. Exit\n"
@@ -112,6 +111,87 @@ int auth_menu(int sockfd) {
     } while (menu != 5);
 }
 
+int select_room_menu(int sockfd) {
+    int menu, err = 0;
+    char buff[BUFF_SIZE] = {0};
+    int response;
+    Account acc;
+
+    /* send navigate screen control */
+    do {
+        bzero(buff, sizeof(buff));
+        sprintf(buff, "%d", SELECT_ROOM_SCREEN);
+        send(sockfd, buff, strlen(buff), 0);
+
+        printf(
+            "===== THE SELECT ROOM SCREEN ===== \n"
+            "1. Create new room\n"
+            "2. Show list rooms \n"
+            "3. Join room by id \n"
+            "4. Show list users \n"
+            "5. Chat PvP with 1 user by id \n"
+            "6. Sign out of chat room \n"
+            "Your choice (1-3): ");
+        scanf("%d%*c", &menu);
+        switch (menu) {
+            case 1:
+                printf("SIGN UP\n");
+                prompt_input_ver2("Nhap username: ", acc.username);
+                prompt_input_ver2("Nhap password: ", acc.password);
+
+                bzero(buff, sizeof(buff));
+                sprintf(buff, "%d %s %s", SIGN_UP, acc.username, acc.password);
+                send(sockfd, buff, strlen(buff), 0);
+                
+                bzero(buff, sizeof(buff));
+                err = recv(sockfd, buff, sizeof(buff), 0);
+                if (err >= 0) {
+                    response = atoi(buff);
+                    if (response == SUCCESS) {
+                        printf("success\n");
+                    }
+                    if (response == FAILED) {
+                        printf("failed\n");
+                    }
+                } 
+                break;
+            case 2:
+                printf("SIGN IN\n");
+                prompt_input_ver2("Nhap username: ", acc.username);
+                prompt_input_ver2("Nhap password: ", acc.password);
+
+                bzero(buff, sizeof(buff));
+                sprintf(buff, "%d %s %s", SIGN_IN, acc.username, acc.password);
+                err = send(sockfd, buff, strlen(buff), 0);
+
+                bzero(buff, sizeof(buff));
+                err = recv(sockfd, buff, sizeof(buff), 0);
+                printf("%s - %ld\n", buff, strlen(buff));
+                if (err >= 0) {
+                    response = atoi(buff);
+                    if (response == SUCCESS) {
+                        printf("success\n");
+                        return 1;
+                    }
+                    if (response == FAILED) {
+                        printf("failed\n");
+                    }
+                } else printf("Error\n");
+                break;
+            case 6:
+                return 0;
+                break;
+            default:
+                printf("Please select valid options\n");
+                break;
+        }  // end switch
+    } while (menu != 6);
+}
+
+int chat_in_room_menu(int sockfd) {
+
+}
+
 int main(int argc, char const *argv[]) {
     if (argc != 2) {
         printf("Usage: %s <port>\n", argv[1]);
@@ -145,28 +225,35 @@ int main(int argc, char const *argv[]) {
     }
 
     /* Check login - Auth_screen */
-    err = auth_menu(sockfd);
-    if (err == 0) exit_flag = 1;
+    // err = auth_menu(sockfd);
+    // if (err == 0) exit_flag = 1;
+
+    /* Select room  */ 
+    err = select_room_menu(sockfd);
+    if (err = 0) exit_flag = 1;
     return 0;
+    
+    if (exit_flag == 0) {
+        printf("===== WELCOME TO THE CHATROOM =====\n");
 
-    //
-    printf("===== WELCOME TO THE CHATROOM =====\n");
+        if (pthread_create(&send_mesg_thread, NULL, (void *)send_msg_handler, NULL) != 0) {
+            printf("ERROR: pthread\n");
+            return EXIT_FAILURE;
+        }
 
-    if (pthread_create(&send_mesg_thread, NULL, (void *)send_msg_handler, NULL) != 0) {
-        printf("ERROR: pthread\n");
-        return EXIT_FAILURE;
+        if (pthread_create(&recv_mesg_thread, NULL, (void *)recv_msg_handler, NULL) != 0) {
+            printf("ERROR: pthread\n");
+            return EXIT_FAILURE;
+        }
     }
 
-    if (pthread_create(&recv_mesg_thread, NULL, (void *)recv_msg_handler, NULL) != 0) {
-        printf("ERROR: pthread\n");
-        return EXIT_FAILURE;
-    }
-
+    // communicate with server
     while (1) {
         if (exit_flag) {
             printf("\nEND CHATROOOM.\n");
             break;
         }
+        
     }
 
     close(sockfd);  // have to close socket

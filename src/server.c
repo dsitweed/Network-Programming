@@ -46,6 +46,8 @@ void appendToFile(char *fileName, char *string) {
     fclose(p);
 }
 
+// return 0 if failed
+// return 1 if success
 int auth_screen(Client client, char *buff_out) {
     JRB node;
     Account *acc = (Account *) malloc(sizeof(Account));
@@ -56,7 +58,7 @@ int auth_screen(Client client, char *buff_out) {
     // get type
     sscanf(buff_out, "%d", &type);
 
-    if (type != SIGN_IN && type != SIGN_UP && type != SIGN_OUT) exit_flag = 1;
+    if (type != SIGN_IN && type != SIGN_UP && type != SIGN_OUT) return 0;
 
     if (type != SIGN_OUT) {
         sscanf(buff_out, "%d %s %s", &type, acc->username, acc->password);
@@ -96,7 +98,7 @@ int auth_screen(Client client, char *buff_out) {
             if (node == NULL) return 0;
 
             jrb_delete_node(node);
-            cli_count--;
+            // cli_count--; - ở đây ko có quyền xóa count_client 
             return 1;
             break;
         case SIGN_UP:
@@ -225,9 +227,10 @@ int main(int argc, char const *argv[]) {
         JRB node;
         int i = 0;
         jrb_traverse(node, clients) {
-            Client cli = (Client)jval_v(node->val);
+            Client cli = (Client) jval_v(node->val);
             printf("%d %d\n", i, cli->id);
         }
+
         pthread_create(&thread_id, NULL, handle_client, client);
         /* Reduce CPU usage */
         sleep(1);
@@ -236,8 +239,91 @@ int main(int argc, char const *argv[]) {
     return EXIT_SUCCESS;
 }
 
+int select_room_screen(Client client, char *buff_out) {
+    JRB node;
+    Account *acc = (Account *) malloc(sizeof(Account));
+    int logined_flag = 0;
+    int type, exit_flag = 0;
+    char buff[BUFF_SIZE] = {0};
+
+    // get type
+    sscanf(buff_out, "%d", &type);
+
+    if (type != SIGN_IN && type != SIGN_UP && type != SIGN_OUT) return 0;
+
+    if (type != SIGN_OUT) {
+        sscanf(buff_out, "%d %s %s", &type, acc->username, acc->password);
+    } else {
+        sscanf(buff_out, "%d %s", &type, acc->username);
+    }
+    printf("%s %s\n", acc->username, acc->password);
+
+    switch (type) {
+        case SIGN_IN:
+            node = jrb_find_str(accounts, acc->username);
+
+            if (node == NULL) {
+                printf("Login failed\n");
+                bzero(buff, sizeof(buff));
+                sprintf(buff, "%d", FAILED);
+                send(client->sockfd, buff, strlen(buff), 0);
+                return 0;
+            }
+
+            Account * findedAcc = (Account *) jval_v(node->val);
+            bzero(buff, sizeof(buff));
+
+            if (strcmp(findedAcc->password, acc->password) != 0) {
+                printf("Login failed\n");
+                sprintf(buff, "%d", FAILED);
+                send(client->sockfd, buff, strlen(buff), 0);
+                return 0;
+            }
+
+            printf("%s has logined\n", acc->username);
+            sprintf(buff, "%d", SUCCESS);
+            send(client->sockfd, buff, strlen(buff), 0);
+            return 1;
+        case SIGN_OUT:
+            node = jrb_find_int(clients, client->id);
+            if (node == NULL) return 0;
+
+            jrb_delete_node(node);
+            // cli_count--; - ở đây ko có quyền xóa count_client 
+            return 1;
+            break;
+        case SIGN_UP:
+            node = jrb_find_str(accounts, acc->username);
+            bzero(buff, sizeof(buff));
+
+            if (node != NULL) {
+                printf("Failed\n");
+                sprintf(buff, "%d", FAILED);
+                send(client->sockfd, buff, strlen(buff), 0);
+                return 0;
+            }
+            
+            jrb_insert_str(accounts, acc->username, new_jval_v(acc));
+            sprintf(buff, "%s %s", acc->username, acc->password);   
+            appendToFile("account.txt", buff);
+            
+            bzero(buff, sizeof(buff));
+            sprintf(buff, "%d", SUCCESS);
+            send(client->sockfd, buff, strlen(buff), 0);
+            break;
+        default:
+            break;
+    }
+
+    return 1;
+}
+
+int chat_in_room_screen(Client client, char *buff_out) {
+
+}
+
 void *handle_client(void *arg) {
-    Client cli = (Client)arg;  // client - is a poiter
+    Client cli = (Client)arg;  // Client - is a poiter
     JRB node;
     char buff_out[BUFF_SIZE + CLIENT_NAME_LEN + 3] = {0};  // save send string from clients
     int leave_flag = 0;
@@ -259,6 +345,8 @@ void *handle_client(void *arg) {
         /*
             continue read if have
         */
+
+        /* Read type of navigate screen control */
         sscanf(buff_out, "%d", &type);
         switch (type) {
             case AUTH_SCREEEN:
@@ -266,8 +354,12 @@ void *handle_client(void *arg) {
                 err = auth_screen(cli, buff_out);
                 break;
             case SELECT_ROOM_SCREEN:
+                received = recv(cli->sockfd, buff_out, sizeof(buff_out), 0);
+                err = select_room_screen(cli, buff_out);
                 break;
             case CHAT_IN_ROOM_SCREEN:
+                received = recv(cli->sockfd, buff_out, sizeof(buff_out), 0);
+                err = chat_in_room_screen(cli, buff_out);
                 break;
             default:
                 break;
