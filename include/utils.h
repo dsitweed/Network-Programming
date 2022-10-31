@@ -20,18 +20,21 @@ typedef struct client {
     int sockfd;
     int id;
     char username[CLIENT_NAME_LEN];
+    JRB list_room;
 } * Client;  // client is poiter
 
 typedef struct account_ {
     char username[CLIENT_NAME_LEN];
-    char password[CLIENT_NAME_LEN];
+    char password[32];
     int accStatus;
 } Account;
 
 typedef struct room_ {
+    int room_id;
+    char room_name[32];
     char owner_name[CLIENT_NAME_LEN];
-    Client list_guest[100];
-} Room;
+    JRB list_guest;
+} * Room;
 
 int prompt_input(char const *message, char *buff); // Cấp phát động bộ nhớ cho buff
 int prompt_input_ver2(char const *message, char *buff);// Buff bộ nhớ cố định 
@@ -44,6 +47,15 @@ void append(char **p_src, char *dest);
 void clear_line();
 
 Client make_client(/* struct sockaddr_in addr, */ int fd, int id, char *username);
+
+Room make_room() {
+    Room newRoom = (Room) malloc(sizeof(Room));
+    newRoom->list_guest = make_jrb();
+
+    return newRoom;
+}
+
+/* create delete room - function in server.c  when have roomList*/
 
 /*
     Cần xem xét lại về tính thực tế của hàm này

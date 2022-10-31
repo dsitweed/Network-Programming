@@ -5,6 +5,7 @@ enum msg_type {
     SIGN_UP,
     SIGN_OUT,
     CREATE_NEW_ROOM,
+    DELETE_ROOM,
     JOIN_ROOM,
     OUT_ROOM,
     INVITE_JOIN_ROOM,

@@ -21,4 +21,16 @@ Account * findedAcc = (Account *) jval_v(node->val);
 
 
 BUG:
-yêu cầu chọn menu là int nhưng nhập vào string treo luôn 
+- yêu cầu chọn menu là int nhưng nhập vào string treo luôn 
+- Client thoat ra -> core dump
+
+<!-- GHi chus -->
+- delete room, delete guest se o trong man hinh chat 
+
+
+Protocol:
+Auth protocol:
+type user_name password
+
+Select_room_protocol:
+type room_name owner_name

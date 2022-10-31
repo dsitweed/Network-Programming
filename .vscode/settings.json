@@ -1,3 +1,9 @@
 {
-    "C_Cpp.errorSquiggles": "Disabled"
-}
+    "files.associations": {
+      "constant.h": "c",
+      "socket.h": "c",
+      "inet.h": "c",
+      "unistd.h": "c",
+      "types.h": "c"
+    }
+  }

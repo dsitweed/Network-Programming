@@ -31,12 +31,17 @@ int main(int argc, char const *argv[]) {
     // }
     // printf("Test\n");
 
-    Room a;
-    Client b = ;
-    strcpy(a.owner_name, "KY");
-    a.list_guest[0] = b;
+    JRB rooms = make_jrb(), node;
+    Room room1 = make_room();
 
-    printf("%s\n", a.owner_name);
+    strcpy(room1.room_name, "fist room");
+    printf("%s\n", room1.room_name);
 
+    jrb_insert_str(rooms, room1.room_name, new_jval_v(&room1));
+
+    jrb_traverse(node, rooms) {
+        Room roomBuff = *(Room *) jval_v(node->val);
+        printf("%s\n", roomBuff.room_name   );
+    }
     return 0;
 }

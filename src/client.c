@@ -28,7 +28,7 @@ typedef struct client {
 /* An integer type which can be accessed as an atomic
 entity even in the presence of asynchronous interrupts made by signals.*/
 volatile sig_atomic_t exit_flag = 0;
-char clientName[CLIENT_NAME_LEN];
+char clientName[CLIENT_NAME_LEN] = "Ky";
 int sockfd = 0;  // socket of this client
 
 void signal_handler(int sig);
@@ -65,7 +65,7 @@ int auth_menu(int sockfd) {
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d %s %s", SIGN_UP, acc.username, acc.password);
                 send(sockfd, buff, strlen(buff), 0);
-                
+
                 bzero(buff, sizeof(buff));
                 err = recv(sockfd, buff, sizeof(buff), 0);
                 if (err >= 0) {
@@ -76,7 +76,7 @@ int auth_menu(int sockfd) {
                     if (response == FAILED) {
                         printf("failed\n");
                     }
-                } 
+                }
                 break;
             case 2:
                 printf("SIGN IN\n");
@@ -94,12 +94,14 @@ int auth_menu(int sockfd) {
                     response = atoi(buff);
                     if (response == SUCCESS) {
                         printf("success\n");
+                        strcpy(clientName, acc.username);
                         return 1;
                     }
                     if (response == FAILED) {
                         printf("failed\n");
                     }
-                } else printf("Error\n");
+                } else
+                    printf("Error\n");
                 break;
             case 3:
                 return 0;
@@ -113,9 +115,9 @@ int auth_menu(int sockfd) {
 
 int select_room_menu(int sockfd) {
     int menu, err = 0;
-    char buff[BUFF_SIZE] = {0};
+    char buff[BUFF_SIZE * 2] = {0};
     int response;
-    Account acc;
+    Room new_room = make_room();
 
     /* send navigate screen control */
     do {
@@ -127,7 +129,7 @@ int select_room_menu(int sockfd) {
             "===== THE SELECT ROOM SCREEN ===== \n"
             "1. Create new room\n"
             "2. Show list rooms \n"
-            "3. Join room by id \n"
+            "3. Join room by name \n"
             "4. Show list users \n"
             "5. Chat PvP with 1 user by id \n"
             "6. Sign out of chat room \n"
@@ -135,12 +137,54 @@ int select_room_menu(int sockfd) {
         scanf("%d%*c", &menu);
         switch (menu) {
             case 1:
-                printf("SIGN UP\n");
-                prompt_input_ver2("Nhap username: ", acc.username);
-                prompt_input_ver2("Nhap password: ", acc.password);
+                printf("Create new room\n");
+                prompt_input_ver2("Name of room: ", new_room->room_name);
+                strcpy(new_room->owner_name, clientName);
 
                 bzero(buff, sizeof(buff));
-                sprintf(buff, "%d %s %s", SIGN_UP, acc.username, acc.password);
+                sprintf(buff, "%d %s %s", CREATE_NEW_ROOM, new_room->room_name, new_room->owner_name);
+                send(sockfd, buff, strlen(buff), 0);
+
+                bzero(buff, sizeof(buff));
+                err = recv(sockfd, buff, sizeof(buff), 0);
+                if (err >= 0) {
+                    response = atoi(buff);
+                    if (response == SUCCESS) {
+                        printf("success\n");
+                    }
+                    if (response == FAILED) {
+                        printf("failed\n");
+                    }
+                }
+                break;
+            case 2:
+                printf("Show list rooms\n");
+                printf("%-20s %s\n", "Room ID", "Room Owner name");
+                bzero(buff, sizeof(buff));
+                sprintf(buff, "%d", SHOW_LIST_ROOMS);
+                send(sockfd, buff, strlen(buff), 0);
+
+                bzero(buff, sizeof(buff));
+                err = recv(sockfd, buff, sizeof(buff), 0);
+                if (err >= 0) {
+                    printf("%s", buff);
+                }
+
+                bzero(buff, sizeof(buff));
+                err = recv(sockfd, buff, sizeof(buff), 0);
+                if (err >= 0) {
+                    response = atoi(buff);
+                    if (response == SUCCESS) {
+                        printf("success\n");
+                    }
+                    if (response == FAILED) {
+                        printf("failed\n");
+                    }
+                }
+                break;
+            case 6:
+                bzero(buff, sizeof(buff));
+                sprintf(buff, "%d", SIGN_OUT);
                 send(sockfd, buff, strlen(buff), 0);
                 
                 bzero(buff, sizeof(buff));
@@ -153,32 +197,7 @@ int select_room_menu(int sockfd) {
                     if (response == FAILED) {
                         printf("failed\n");
                     }
-                } 
-                break;
-            case 2:
-                printf("SIGN IN\n");
-                prompt_input_ver2("Nhap username: ", acc.username);
-                prompt_input_ver2("Nhap password: ", acc.password);
-
-                bzero(buff, sizeof(buff));
-                sprintf(buff, "%d %s %s", SIGN_IN, acc.username, acc.password);
-                err = send(sockfd, buff, strlen(buff), 0);
-
-                bzero(buff, sizeof(buff));
-                err = recv(sockfd, buff, sizeof(buff), 0);
-                printf("%s - %ld\n", buff, strlen(buff));
-                if (err >= 0) {
-                    response = atoi(buff);
-                    if (response == SUCCESS) {
-                        printf("success\n");
-                        return 1;
-                    }
-                    if (response == FAILED) {
-                        printf("failed\n");
-                    }
-                } else printf("Error\n");
-                break;
-            case 6:
+                }
                 return 0;
                 break;
             default:
@@ -188,9 +207,7 @@ int select_room_menu(int sockfd) {
     } while (menu != 6);
 }
 
-int chat_in_room_menu(int sockfd) {
-
-}
+int chat_in_room_menu(int sockfd) {}
 
 int main(int argc, char const *argv[]) {
     if (argc != 2) {
@@ -228,11 +245,10 @@ int main(int argc, char const *argv[]) {
     // err = auth_menu(sockfd);
     // if (err == 0) exit_flag = 1;
 
-    /* Select room  */ 
+    /* Select room  */
     err = select_room_menu(sockfd);
-    if (err = 0) exit_flag = 1;
-    return 0;
-    
+    if (err == 0) exit_flag = 1;
+
     if (exit_flag == 0) {
         printf("===== WELCOME TO THE CHATROOM =====\n");
 
@@ -253,7 +269,6 @@ int main(int argc, char const *argv[]) {
             printf("\nEND CHATROOOM.\n");
             break;
         }
-        
     }
 
     close(sockfd);  // have to close socket
