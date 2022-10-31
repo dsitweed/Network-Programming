@@ -133,7 +133,7 @@ int select_room_menu(int sockfd) {
             "4. Show list users \n"
             "5. Chat PvP with 1 user by id \n"
             "6. Sign out of chat room \n"
-            "Your choice (1-3): ");
+            "Your choice (1-6): ");
         scanf("%d%*c", &menu);
         switch (menu) {
             case 1:

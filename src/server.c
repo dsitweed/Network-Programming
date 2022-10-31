@@ -307,7 +307,7 @@ int select_room_screen(Client client, char *buff_out) {
     bzero(buff, sizeof(buff));
     sprintf(buff, "%d", SUCCESS);
     send(client->sockfd, buff, strlen(buff), 0);
-    free(sendString);
+    sendString = NULL;
     if (exit_flag == 1) return EXIT;
     return 1;
 }
@@ -363,9 +363,8 @@ void *handle_client(void *arg) {
                 err = chat_in_room_screen(cli, buff_out);
                 break;
             case EXIT:
-                printf("IN\n");
+                printf("EXIT\n");
                 leave_flag = 1;
-                
                 break;
             default:
                 break;
