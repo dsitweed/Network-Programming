@@ -341,6 +341,7 @@ int select_room_screen(Client *client, char *buff_out) {
             room = (Room*) jval_v(node->val);
             int number_guest = room->number_guest;
             room->arr_list_guest[number_guest++] = client->id;
+            exit_flag = JOIN_ROOM;
             break;}
         case SHOW_LIST_USERS:
             printf("Show list users (is online) \n");
@@ -373,7 +374,7 @@ int select_room_screen(Client *client, char *buff_out) {
             room->number_guest = 2;
 
             jrb_insert_str(rooms, "PvP", new_jval_v(room));
-            exit_flag = 1;
+            exit_flag = PVP_CHAT;
             break;}
         case SIGN_OUT:
             exit_flag = 1;
@@ -389,7 +390,10 @@ int select_room_screen(Client *client, char *buff_out) {
     else sprintf(buff, "%d", FAILED);
     send(client->sockfd, buff, strlen(buff), 0);
     sendString = NULL;
+
     if (exit_flag == 1) return EXIT;
+    if (exit_flag == PVP_CHAT) return PVP_CHAT;
+    if (exit_flag == JOIN_ROOM) return JOIN_ROOM;
     return 1;
 }
 
@@ -398,19 +402,20 @@ int chat_in_room_screen(Client *client) {
     char buff[BUFF_SIZE] = {0};
 
     while (1) {
-
         bzero(buff, sizeof(buff));
         int received = recv(client->sockfd, buff, sizeof(buff), 0);
-        if (received > 0) {
-
-        } else if (received == 0 || strcmp(buff, "ext") == 0) {
-
+        if (received == 0 || strcmp(buff, "exit") == 0) {
+            break;
+        } else if (received > 0) {
+            printf("%s -> %s\n", client->username, buff);
+            send(client->sockfd, buff, strlen(buff), 0);
         } else {
             PRINT_ERROR;
-
+            break;
         }
-
     }
+
+    printf("End chat\n");
 
     return 1;
 }
@@ -457,6 +462,7 @@ void *handle_client(void *arg) {
                 received = recv(cli->sockfd, buff_out, sizeof(buff_out), 0);
                 res = select_room_screen(cli, buff_out);
                 if (res == EXIT) leave_flag = 1;
+                /* Đã select xong room và chọn xong người chat  */
                 break;
             case CHAT_IN_ROOM_SCREEN:
                 bzero(buff_out, sizeof(buff_out));

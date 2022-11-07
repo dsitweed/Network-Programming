@@ -273,7 +273,6 @@ int chat_in_room_menu(int sockfd) {
             break;
         }
     }
-
     return 1;
 }
 
@@ -283,7 +282,7 @@ int main(int argc, char const *argv[]) {
         return EXIT_FAILURE;
     }
 
-    int err;
+    int err, main_exit_flag = 0;
     struct sockaddr_in server_addr;
     pthread_t send_mesg_thread;
     pthread_t recv_mesg_thread;
@@ -308,10 +307,10 @@ int main(int argc, char const *argv[]) {
 
     /* Check login - Auth_screen */
     err = auth_menu(sockfd);
-    if (err == 0) exit_flag = 1;
+    if (err == 0) main_exit_flag = 1;
 
     while (1) {
-        if (exit_flag == 1) break;
+        if (main_exit_flag == 1) break;
         /* Select room  */
         err = select_room_menu(sockfd);
         if (err == EXIT) break;
@@ -346,7 +345,7 @@ int main(int argc, char const *argv[]) {
     return EXIT_SUCCESS;
 }
 
-void signal_handler(int sig) { exit_flag = 1; }
+void signal_handler(int sig) { exit_flag = sig; }
 
 void send_msg_handler() {
     char message[BUFF_SIZE];
@@ -358,6 +357,9 @@ void send_msg_handler() {
         str_trim_lf(message);
 
         if (strcmp(message, "exit") == 0) {
+            sprintf(buffer, "%s", "exit");
+            send(sockfd,buffer, strlen(buffer), 0);
+            signal_handler(1);
             break;
         } else {
             sprintf(buffer, "%s: %s", clientName, message);
@@ -367,8 +369,6 @@ void send_msg_handler() {
         bzero(message, sizeof(message));
         bzero(buffer, sizeof(buffer));
     }
-
-    signal_handler(1);
 }
 
 void recv_msg_handler() {
@@ -376,6 +376,10 @@ void recv_msg_handler() {
     int received = 0;
 
     while (1) {
+        if (exit_flag == 1) {
+            printf("End chat- recvfunction\n");
+            break;
+        }
         received = recv(sockfd, message, sizeof(message), 0);
 
         if (received > 0) {
