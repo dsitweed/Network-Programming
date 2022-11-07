@@ -35,6 +35,15 @@ void signal_handler(int sig);
 void send_msg_handler();
 void recv_msg_handler();
 
+typedef union chatWith
+{
+    char with_room[33];
+    int with_id;
+} ChatWith;
+
+ChatWith with;
+
+
 // return 0 error
 // return 1 -> ... is success
 int auth_menu(int sockfd) {
@@ -104,6 +113,10 @@ int auth_menu(int sockfd) {
                     printf("Error\n");
                 break;
             case 3:
+                printf("EXIT\n");
+                bzero(buff, sizeof(buff));
+                sprintf(buff, "%d %s", SIGN_OUT, clientName);
+                err = send(sockfd, buff, strlen(buff), 0);
                 return 0;
                 break;
             default:
@@ -111,14 +124,17 @@ int auth_menu(int sockfd) {
                 break;
         }  // end switch
     } while (menu != 5);
+    return 1;
 }
 
 int select_room_menu(int sockfd) {
     int menu, err = 0;
     char buff[BUFF_SIZE * 2] = {0};
     int response;
-    Room new_room = make_room();
+    int exit_flag = 0;
+    Room *new_room = (Room *)malloc(sizeof(Room));
 
+    bzero(with.with_room, sizeof(with.with_room));
     /* send navigate screen control */
     do {
         bzero(buff, sizeof(buff));
@@ -145,17 +161,6 @@ int select_room_menu(int sockfd) {
                 sprintf(buff, "%d %s %s", CREATE_NEW_ROOM, new_room->room_name, new_room->owner_name);
                 send(sockfd, buff, strlen(buff), 0);
 
-                bzero(buff, sizeof(buff));
-                err = recv(sockfd, buff, sizeof(buff), 0);
-                if (err >= 0) {
-                    response = atoi(buff);
-                    if (response == SUCCESS) {
-                        printf("success\n");
-                    }
-                    if (response == FAILED) {
-                        printf("failed\n");
-                    }
-                }
                 break;
             case 2:
                 printf("Show list rooms\n");
@@ -170,44 +175,107 @@ int select_room_menu(int sockfd) {
                     printf("%s", buff);
                 }
 
+                break;
+            case 3:
+                printf("Join room by name\n");
+                char room_name[100] = {0};
+                prompt_input_ver2("Input room name: ", with.with_room);
+
+                bzero(buff, sizeof(buff));
+                sprintf(buff, "%d %s", JOIN_ROOM, room_name);
+                send(sockfd, buff, strlen(buff), 0);
+
+                menu = 6; // break out while
+                break;
+            case 4:
+                printf("Show list users \n");
+                bzero(buff, sizeof(buff));
+                sprintf(buff, "%d", SHOW_LIST_USERS);
+                send(sockfd, buff, strlen(buff), 0);
+
                 bzero(buff, sizeof(buff));
                 err = recv(sockfd, buff, sizeof(buff), 0);
                 if (err >= 0) {
-                    response = atoi(buff);
-                    if (response == SUCCESS) {
-                        printf("success\n");
-                    }
-                    if (response == FAILED) {
-                        printf("failed\n");
-                    }
+                    printf("%s", buff);
                 }
                 break;
+            case 5: {
+                int friend_id;
+                printf("Chat PvP with 1 user by id \n");
+                bzero(buff, sizeof(buff));
+                printf("Input friend id: ");
+                scanf("%d%*c", &with.with_id);
+
+                sprintf(buff, "%d %d", PVP_CHAT, friend_id);
+                send(sockfd, buff, strlen(buff), 0);
+
+                menu = 6; // break out while
+                break;
+            }
             case 6:
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d", SIGN_OUT);
                 send(sockfd, buff, strlen(buff), 0);
-                
-                bzero(buff, sizeof(buff));
-                err = recv(sockfd, buff, sizeof(buff), 0);
-                if (err >= 0) {
-                    response = atoi(buff);
-                    if (response == SUCCESS) {
-                        printf("success\n");
-                    }
-                    if (response == FAILED) {
-                        printf("failed\n");
-                    }
-                }
-                return 0;
+
+                exit_flag = 1;
                 break;
             default:
                 printf("Please select valid options\n");
                 break;
         }  // end switch
-    } while (menu != 6);
+
+        /* check response from client  */
+        bzero(buff, sizeof(buff));
+        err = recv(sockfd, buff, sizeof(buff), 0);
+        if (err >= 0) {
+            response = atoi(buff);
+            if (response == SUCCESS) {
+                printf("success\n");
+            }
+            if (response == FAILED) {
+                printf("failed\n");
+            }
+        }
+    } while (menu != 6 && exit_flag != 1);
+
+    if (exit_flag == 1) return EXIT;
+    return 1;
 }
 
-int chat_in_room_menu(int sockfd) {}
+// return 1 no error
+int chat_in_room_menu(int sockfd) {
+    char buff[BUFF_SIZE];
+    pthread_t send_mesg_thread;
+    pthread_t recv_mesg_thread;
+
+    signal(SIGINT, signal_handler);
+
+    bzero(buff, sizeof(buff));
+    sprintf(buff, "%d", CHAT_IN_ROOM_SCREEN);
+    send(sockfd, buff, strlen(buff), 0);
+
+    printf("===== WELCOME TO THE CHATROOM =====\n");
+
+    if (pthread_create(&send_mesg_thread, NULL, (void *)send_msg_handler, NULL) != 0) {
+        printf("ERROR: pthread\n");
+        return EXIT_FAILURE;
+    }
+
+    if (pthread_create(&recv_mesg_thread, NULL, (void *)recv_msg_handler, NULL) != 0) {
+        printf("ERROR: pthread\n");
+        return EXIT_FAILURE;
+    }
+
+    // communicate with server
+    while (1) {
+        if (exit_flag) {
+            printf("\nEND CHATROOOM.\n");
+            break;
+        }
+    }
+
+    return 1;
+}
 
 int main(int argc, char const *argv[]) {
     if (argc != 2) {
@@ -216,16 +284,13 @@ int main(int argc, char const *argv[]) {
     }
 
     int err;
-    char buff[BUFF_SIZE] = {0};
-
     struct sockaddr_in server_addr;
     pthread_t send_mesg_thread;
     pthread_t recv_mesg_thread;
     char *IP = "127.0.0.1";
     int PORT = atoi(argv[1]);
-    Account acc;
 
-    signal(SIGINT, signal_handler);
+    // signal(SIGINT, signal_handler);
 
     /*Socket settings*/
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -242,34 +307,40 @@ int main(int argc, char const *argv[]) {
     }
 
     /* Check login - Auth_screen */
-    // err = auth_menu(sockfd);
-    // if (err == 0) exit_flag = 1;
-
-    /* Select room  */
-    err = select_room_menu(sockfd);
+    err = auth_menu(sockfd);
     if (err == 0) exit_flag = 1;
 
-    if (exit_flag == 0) {
-        printf("===== WELCOME TO THE CHATROOM =====\n");
-
-        if (pthread_create(&send_mesg_thread, NULL, (void *)send_msg_handler, NULL) != 0) {
-            printf("ERROR: pthread\n");
-            return EXIT_FAILURE;
-        }
-
-        if (pthread_create(&recv_mesg_thread, NULL, (void *)recv_msg_handler, NULL) != 0) {
-            printf("ERROR: pthread\n");
-            return EXIT_FAILURE;
-        }
-    }
-
-    // communicate with server
     while (1) {
-        if (exit_flag) {
-            printf("\nEND CHATROOOM.\n");
-            break;
-        }
+        if (exit_flag == 1) break;
+        /* Select room  */
+        err = select_room_menu(sockfd);
+        if (err == EXIT) break;
+
+        /* Chat PvP or Chat with Room */
+        err = chat_in_room_menu(sockfd);
     }
+
+    // if (exit_flag == 0) {
+    //     printf("===== WELCOME TO THE CHATROOM =====\n");
+
+    //     if (pthread_create(&send_mesg_thread, NULL, (void *)send_msg_handler, NULL) != 0) {
+    //         printf("ERROR: pthread\n");
+    //         return EXIT_FAILURE;
+    //     }
+
+    //     if (pthread_create(&recv_mesg_thread, NULL, (void *)recv_msg_handler, NULL) != 0) {
+    //         printf("ERROR: pthread\n");
+    //         return EXIT_FAILURE;
+    //     }
+    // }
+
+    // // communicate with server
+    // while (1) {
+    //     if (exit_flag) {
+    //         printf("\nEND CHATROOOM.\n");
+    //         break;
+    //     }
+    // }
 
     close(sockfd);  // have to close socket
     return EXIT_SUCCESS;

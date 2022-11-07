@@ -34,3 +34,9 @@ type user_name password
 
 Select_room_protocol:
 type room_name owner_name
+
+accounts.txt format
+username password id_user
+
+rooms.txt format
+roomName ownerName id_owner id_guest1 id_guest2 id_guest3 (...id_guestN)

@@ -1,0 +1,7 @@
+hedspi1 hedpsi2016 0
+hust hust123 1
+soict soictfit 2
+huy 123 3
+123 123 4
+345 345 5
+name password 6

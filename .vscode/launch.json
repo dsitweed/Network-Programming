@@ -28,6 +28,20 @@
         "miDebuggerPath": "gdb",
         "program": "${workspaceFolder}/build/client",
         "preLaunchTask": "build"
+      },
+      {
+        "name": "Test",
+        "type": "cppdbg",
+        "request": "launch",
+        "args": [],
+        "stopAtEntry": false,
+        "cwd": "${workspaceFolder}",
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "miDebuggerPath": "gdb",
+        "program": "${workspaceFolder}/build/test",
+        "preLaunchTask": "build"
       }
     ]
   }

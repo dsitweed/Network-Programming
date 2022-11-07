@@ -4,6 +4,11 @@
       "socket.h": "c",
       "inet.h": "c",
       "unistd.h": "c",
-      "types.h": "c"
+      "types.h": "c",
+      "utils.h": "c",
+      "stdio.h": "c",
+      "string.h": "c",
+      "jval.h": "c",
+      "algorithm": "c"
     }
   }

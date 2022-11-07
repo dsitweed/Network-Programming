@@ -68,12 +68,3 @@ int config_server(int *fd, struct sockaddr_in *addr) {
     addr->sin_port = strtol(buff, NULL, 10);
     return 0;
 }
-
-Client make_client(/* struct sockaddr_in addr, */ int fd, int id, char *username) {
-    Client client = malloc(sizeof(struct client));
-    // client->addr = addr;
-    client->sockfd = fd;
-    client->id = id;
-    strcpy(client->username, username);
-    return client;
-}
