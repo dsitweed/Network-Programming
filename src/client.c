@@ -28,7 +28,7 @@ typedef struct client {
 /* An integer type which can be accessed as an atomic
 entity even in the presence of asynchronous interrupts made by signals.*/
 volatile sig_atomic_t exit_flag = 0;
-char clientName[CLIENT_NAME_LEN] = "Ky";
+char clientName[CLIENT_NAME_LEN] = "Default_name"; // save client name at global variable
 int sockfd = 0;  // socket of this client
 
 void signal_handler(int sig);
@@ -42,6 +42,7 @@ typedef union chatWith
 } ChatWith;
 
 ChatWith with;
+int typeChat;
 
 
 // return 0 error
@@ -154,7 +155,7 @@ int select_room_menu(int sockfd) {
         switch (menu) {
             case 1:
                 printf("Create new room\n");
-                prompt_input_ver2("Name of room: ", new_room->room_name);
+                prompt_input_ver2("Name of room (PVP name can't to used): ", new_room->room_name);
                 strcpy(new_room->owner_name, clientName);
 
                 bzero(buff, sizeof(buff));
@@ -178,14 +179,14 @@ int select_room_menu(int sockfd) {
                 break;
             case 3:
                 printf("Join room by name\n");
-                char room_name[100] = {0};
                 prompt_input_ver2("Input room name: ", with.with_room);
 
                 bzero(buff, sizeof(buff));
-                sprintf(buff, "%d %s", JOIN_ROOM, room_name);
+                sprintf(buff, "%d %s", JOIN_ROOM, with.with_room);
                 send(sockfd, buff, strlen(buff), 0);
 
                 menu = 6; // break out while
+                exit_flag = JOIN_ROOM;
                 break;
             case 4:
                 printf("Show list users \n");
@@ -200,24 +201,25 @@ int select_room_menu(int sockfd) {
                 }
                 break;
             case 5: {
-                int friend_id;
                 printf("Chat PvP with 1 user by id \n");
                 bzero(buff, sizeof(buff));
                 printf("Input friend id: ");
                 scanf("%d%*c", &with.with_id);
 
-                sprintf(buff, "%d %d", PVP_CHAT, friend_id);
+                sprintf(buff, "%d %d", PVP_CHAT, with.with_id);
                 send(sockfd, buff, strlen(buff), 0);
 
                 menu = 6; // break out while
+                exit_flag = PVP_CHAT;
                 break;
             }
             case 6:
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d", SIGN_OUT);
                 send(sockfd, buff, strlen(buff), 0);
-
-                exit_flag = 1;
+                
+                menu = 6; // break out while
+                exit_flag = EXIT;
                 break;
             default:
                 printf("Please select valid options\n");
@@ -233,12 +235,15 @@ int select_room_menu(int sockfd) {
                 printf("success\n");
             }
             if (response == FAILED) {
+                menu = 0; // return while loop
                 printf("failed\n");
             }
         }
-    } while (menu != 6 && exit_flag != 1);
+    } while (menu != 6);
 
-    if (exit_flag == 1) return EXIT;
+    if (exit_flag == EXIT) return EXIT;
+    if (exit_flag == PVP_CHAT) return PVP_CHAT;
+    if (exit_flag == JOIN_ROOM) return JOIN_ROOM;
     return 1;
 }
 
@@ -269,6 +274,8 @@ int chat_in_room_menu(int sockfd) {
     // communicate with server
     while (1) {
         if (exit_flag) {
+            pthread_detach(recv_mesg_thread);    
+            pthread_detach(send_mesg_thread);    
             printf("\nEND CHATROOOM.\n");
             break;
         }
@@ -284,8 +291,6 @@ int main(int argc, char const *argv[]) {
 
     int err, main_exit_flag = 0;
     struct sockaddr_in server_addr;
-    pthread_t send_mesg_thread;
-    pthread_t recv_mesg_thread;
     char *IP = "127.0.0.1";
     int PORT = atoi(argv[1]);
 
@@ -312,34 +317,12 @@ int main(int argc, char const *argv[]) {
     while (1) {
         if (main_exit_flag == 1) break;
         /* Select room  */
-        err = select_room_menu(sockfd);
-        if (err == EXIT) break;
+        typeChat = select_room_menu(sockfd);
+        if (typeChat == EXIT) break;
 
         /* Chat PvP or Chat with Room */
         err = chat_in_room_menu(sockfd);
     }
-
-    // if (exit_flag == 0) {
-    //     printf("===== WELCOME TO THE CHATROOM =====\n");
-
-    //     if (pthread_create(&send_mesg_thread, NULL, (void *)send_msg_handler, NULL) != 0) {
-    //         printf("ERROR: pthread\n");
-    //         return EXIT_FAILURE;
-    //     }
-
-    //     if (pthread_create(&recv_mesg_thread, NULL, (void *)recv_msg_handler, NULL) != 0) {
-    //         printf("ERROR: pthread\n");
-    //         return EXIT_FAILURE;
-    //     }
-    // }
-
-    // // communicate with server
-    // while (1) {
-    //     if (exit_flag) {
-    //         printf("\nEND CHATROOOM.\n");
-    //         break;
-    //     }
-    // }
 
     close(sockfd);  // have to close socket
     return EXIT_SUCCESS;
@@ -349,23 +332,25 @@ void signal_handler(int sig) { exit_flag = sig; }
 
 void send_msg_handler() {
     char message[BUFF_SIZE];
-    char buffer[BUFF_SIZE + CLIENT_NAME_LEN + 3];  // = message + name of user + 3 (for 3 time \0)
+    char buffer[BUFF_SIZE + CLIENT_NAME_LEN * 2 + 3];  // = message + name of user + 3 (for 3 time \0)
 
     while (1) {
-        printf("> You: ");
-        fgets(message, sizeof(message), stdin);
-        str_trim_lf(message);
+        prompt_input_ver2("> You: ", message);
 
         if (strcmp(message, "exit") == 0) {
             sprintf(buffer, "%s", "exit");
             send(sockfd,buffer, strlen(buffer), 0);
             signal_handler(1);
             break;
-        } else {
-            sprintf(buffer, "%s: %s", clientName, message);
+        } else if (typeChat == PVP_CHAT) {
+            sprintf(buffer, "%d %s: %s", with.with_id, clientName, message);
+            send(sockfd, buffer, strlen(buffer), 0);
+        } else if (typeChat == JOIN_ROOM) {
+            sprintf(buffer, "%s %s: %s", with.with_room ,clientName, message);
             send(sockfd, buffer, strlen(buffer), 0);
         }  // end send message
 
+        fflush(stdout);
         bzero(message, sizeof(message));
         bzero(buffer, sizeof(buffer));
     }
@@ -392,6 +377,7 @@ void recv_msg_handler() {
         } else {
             // -1
         }
+        fflush(stdout);
 
         memset(message, 0, sizeof(message));
     }

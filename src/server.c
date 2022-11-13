@@ -40,6 +40,8 @@ pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 void *handle_client(void *arg);
 void handle_exit(); // for sersev exit
 void send_message(char *s, int uid);
+void send_message_toPVP(Client* client, char *s);
+void send_message_toGroup(Client* client, char *s);
 void print_client_addr(struct sockaddr_in addr);
 
 void appendToFile(char *fileName, char *string) {
@@ -69,6 +71,7 @@ int auth_screen(Client *client, char *buff_out) {
     } else {
         sscanf(buff_out, "%d %s", &type, acc->username);
     }
+
     printf("%s %s\n", acc->username, acc->password);
 
     switch (type) {
@@ -96,25 +99,31 @@ int auth_screen(Client *client, char *buff_out) {
             printf("%s has logined\n", acc->username);
             sprintf(buff, "%d", SUCCESS);
             // copy user name into clients Lists
-            jrb_traverse(node, clients) {
-                Client *cli = (Client *) jval_v(node->val);
-                if (cli->sockfd == client->sockfd){
-                    node->key = new_jval_i(findedAcc->user_id);
-                    cli->id = findedAcc->user_id;
-                    strcpy(cli->username, findedAcc->username);
+            node = jrb_find_int(clients, findedAcc->user_id);
+            
+            if (node == NULL) {
+                jrb_traverse(node, clients) {
+                    Client *cli = (Client *) jval_v(node->val);
+                    if (cli->sockfd == client->sockfd){
+                        node->key = new_jval_i(findedAcc->user_id);
+                        cli->id = findedAcc->user_id;
+                        strcpy(cli->username, findedAcc->username);
+                    }
                 }
             }
-            
+                   
             send(client->sockfd, buff, strlen(buff), 0);
             return 1;
         case SIGN_OUT:
-            node = jrb_find_int(clients, client->id);
-            if (node == NULL) return 0;
-
-            jrb_delete_node(node);
+        {   JRB buff = NULL;
+            jrb_traverse(node, clients) {
+                Client* cli = (Client*) jval_v(node->val);
+                if (cli->sockfd == client->sockfd) buff = node;
+            }
+            if (buff != NULL) jrb_delete_node(buff);
             // cli_count--; - ở đây ko có quyền xóa count_client 
             return EXIT;
-            break;
+            break;}
         case SIGN_UP:
             node = jrb_find_str(accounts, acc->username);
             bzero(buff, sizeof(buff));
@@ -128,8 +137,8 @@ int auth_screen(Client *client, char *buff_out) {
             
             acc->user_id = user_id++;
             jrb_insert_str(accounts, acc->username, new_jval_v(acc));
-            sprintf(buff, "%s %s", acc->username, acc->password);   
-            appendToFile("account.txt", buff);
+            sprintf(buff, "%s %s %d", acc->username, acc->password, acc->user_id);   
+            appendToFile("accounts.txt", buff);
             
             bzero(buff, sizeof(buff));
             sprintf(buff, "%d", SUCCESS);
@@ -173,6 +182,8 @@ JRB getRoomList(const char *sourceFile) {
         }
         jrb_insert_str(list, room->room_name, new_jval_v(room));
     }
+    
+    fclose(file);
     return list;
 }
 
@@ -268,9 +279,10 @@ int main(int argc, char const *argv[]) {
         
         JRB node;
         int i = 0;
+        printf("%s %s %s %s\n", "number_cli", "client_id", "node->key", "client->sockfd");
         jrb_traverse(node, clients) {
             Client* cli = (Client*) jval_v(node->val);
-            printf("%d %d\n", i, cli->id);
+            printf("%d %d %d %d\n", i++, cli->id, jval_i(node->key), cli->sockfd);
         }
 
         pthread_create(&thread_id, NULL, handle_client, client);
@@ -297,6 +309,10 @@ int select_room_screen(Client *client, char *buff_out) {
     switch (type) {
         case CREATE_NEW_ROOM:
             sscanf(buff_out, "%d %s %s", &type, room->room_name, room->owner_name);
+            room->owner_id = client->id;
+            room->arr_list_guest[0] = client->id;
+            room->number_guest = 1;
+
             node = jrb_find_str(rooms, room->room_name);
 
             bzero(buff, sizeof(buff));
@@ -338,21 +354,39 @@ int select_room_screen(Client *client, char *buff_out) {
                 true_flag = 0;
                 break;
             }
+            int isHaveInList = 0;
             room = (Room*) jval_v(node->val);
-            int number_guest = room->number_guest;
-            room->arr_list_guest[number_guest++] = client->id;
+            for (int i = 0; i < room->number_guest; i++) {
+                if (room->arr_list_guest[i] == client->id) {
+                    isHaveInList = 1;
+                    break;
+                }
+            }
+            if (isHaveInList == 0)
+                room->arr_list_guest[room->number_guest++] = client->id;
+            /* Client ready to chat = 1 */
+            node = NULL;
+            jrb_traverse(node, clients) {
+                int buff_i = jval_i(node->key);
+                if (buff_i == client->id) break;
+            }
+            if (node != NULL) {
+                Client *cli = (Client*) jval_v(node->val);
+                cli->ready_chat = 1;
+            }
             exit_flag = JOIN_ROOM;
             break;}
         case SHOW_LIST_USERS:
             printf("Show list users (is online) \n");
+            printf("%-32s %-10s", "Username", "userId\n");
             sendString = NULL;
 
             run_traverse_time = 0;
             jrb_traverse(node, clients) {
                 Client *cli = (Client *) jval_v(node->val);
-                if (cli->id == client->id) continue;
+                if (cli->id == client->id || cli->id == -1) continue;
                 bzero(buff, sizeof(buff));
-                printf("%s %d\n", cli->username, cli->id);
+                printf("%-32s %-10d\n", cli->username, cli->id);
                 sprintf(buff, "%s %d\n", cli->username, cli->id);
                 append(&sendString, buff);
                 run_traverse_time++;
@@ -367,17 +401,46 @@ int select_room_screen(Client *client, char *buff_out) {
             {int friend_id;
             printf("Chat PvP\n");
             sscanf(buff_out, "%d %d", &type, &friend_id);
-            
-            room = (Room*) malloc(sizeof(Room));
-            room->arr_list_guest[0] = client->id;
-            room->arr_list_guest[1] = friend_id;
-            room->number_guest = 2;
 
-            jrb_insert_str(rooms, "PvP", new_jval_v(room));
+            node = NULL;
+            jrb_traverse(node, clients) {
+                int buff = jval_i(node->key);
+                if (friend_id == buff) break;
+            }
+            if (node == NULL) {
+                true_flag = 0;
+                printf("Can't connect with user have id: %d\n", friend_id);
+                break;
+            }
+
+            client->ready_chat = 1;
+            /* Change status in data is running */ 
+            node = NULL;
+            jrb_traverse(node, clients) {
+                int buff = jval_i(node->key);
+                if (client->id == buff) break;
+            }
+
+            if (node != NULL) {
+                Client *buffCli = (Client*) jval_v(node->val);
+                buffCli->ready_chat = 1;       
+            } else {
+                true_flag = 0;
+                printf("Can't find youselft, id: %d\n", client->id);
+                break;
+            }
+
             exit_flag = PVP_CHAT;
             break;}
         case SIGN_OUT:
-            exit_flag = 1;
+            node = jrb_find_int(clients, client->id);
+            if (node == 0) {
+                printf("EXIT Failed\n");
+                break;
+            }
+
+            jrb_delete_node(node);
+            exit_flag = EXIT;
             // sign out 
             break;
         default:
@@ -391,24 +454,40 @@ int select_room_screen(Client *client, char *buff_out) {
     send(client->sockfd, buff, strlen(buff), 0);
     sendString = NULL;
 
-    if (exit_flag == 1) return EXIT;
+    if (exit_flag == EXIT) return EXIT;
     if (exit_flag == PVP_CHAT) return PVP_CHAT;
     if (exit_flag == JOIN_ROOM) return JOIN_ROOM;
     return 1;
 }
 
-int chat_in_room_screen(Client *client) {
+int chat_in_room_screen(Client *client, int typeChat) {
+    JRB node;
     int back_flag = 0;
     char buff[BUFF_SIZE] = {0};
 
     while (1) {
         bzero(buff, sizeof(buff));
         int received = recv(client->sockfd, buff, sizeof(buff), 0);
+        printf("Check chat_in_room_screee: Type: %d, received Bytes: %d\n", typeChat, received);
         if (received == 0 || strcmp(buff, "exit") == 0) {
+            client->ready_chat = 0;
+            node = NULL;
+            jrb_traverse(node, clients) {
+                int buff = jval_i(node->key);
+                if (buff == client->id) break;
+            }
+            if (node != NULL) {
+                Client *cl = (Client *) jval_v(node->val);
+                cl->ready_chat = 0;
+            }
+            fflush(stdout);
             break;
-        } else if (received > 0) {
-            printf("%s -> %s\n", client->username, buff);
-            send(client->sockfd, buff, strlen(buff), 0);
+        } else if (received > 0 && typeChat == PVP_CHAT) {
+            printf("Send PVP: %s -> %s\n", client->username, buff);
+            send_message_toPVP(client, buff);
+        }else if (received > 0 && typeChat == JOIN_ROOM) {
+            printf("Send to group: %s -> %s\n", client->username, buff);
+            send_message_toGroup(client, buff);
         } else {
             PRINT_ERROR;
             break;
@@ -417,7 +496,7 @@ int chat_in_room_screen(Client *client) {
 
     printf("End chat\n");
 
-    return 1;
+    return EXIT;
 }
 
 void *handle_client(void *arg) {
@@ -428,7 +507,8 @@ void *handle_client(void *arg) {
     int type = -1;  // type of mess send from clients
 
     int err = 0;  // read recvbytes or read err number
-    int res = 0;
+    int res = 0; // type chat at select_room_screen
+
 
     cli_count++;
 
@@ -448,7 +528,7 @@ void *handle_client(void *arg) {
         */
 
         /* Read type of navigate screen control */
-        sscanf(buff_out, "%d", &type);
+        if (strlen(buff_out) > 0) sscanf(buff_out, "%d", &type);
 
         switch (type) {
             case AUTH_SCREEEN:
@@ -467,11 +547,7 @@ void *handle_client(void *arg) {
             case CHAT_IN_ROOM_SCREEN:
                 bzero(buff_out, sizeof(buff_out));
                 // received = recv(cli->sockfd, buff_out, sizeof(buff_out), 0);
-                err = chat_in_room_screen(cli);
-                break;
-            case EXIT:
-                printf("EXIT\n");
-                leave_flag = 1;
+                err = chat_in_room_screen(cli, res);
                 break;
             default:
                 break;
@@ -481,10 +557,6 @@ void *handle_client(void *arg) {
     /* Delete client from List and yield thread */
 
     close(cli->sockfd);
-    /* delete client from List */
-    node = jrb_find_int(clients, cli->sockfd);
-
-    if (node != NULL) jrb_delete_node(node);
 
     cli_count--;
     pthread_detach(pthread_self());
@@ -495,6 +567,17 @@ void *handle_client(void *arg) {
 void handle_exit() {
     printf("\nEXIT\n");
     /* Save data */
+    /* Save rooms */
+    JRB node;
+    FILE *fp = fopen("rooms.txt", "w");
+    jrb_traverse(node, rooms) {
+        Room *room = (Room *) jval_v(node->val);
+        fprintf(fp, "%s %s %d %d\n", room->room_name, room->owner_name, room->owner_id, room->number_guest);
+        for (int i = 0; i < room->number_guest; i++) {
+            fprintf(fp, "%d\n", room->arr_list_guest[i]);
+        }
+    }
+    fclose(fp);
     exit(1);
 }
 
@@ -507,6 +590,85 @@ void send_message(char *s, int cli_id) {
         if (cli->id != cli_id) {
             send(cli->sockfd, s, strlen(s), 0);
         }
+    }
+
+    pthread_mutex_unlock(&clients_mutex);
+}
+
+int len_of_number(int number) {
+    int count = 0;
+    if (number == 0) return 1;
+    while (number > 0) {
+        number = number / 10;
+        count++;
+    }
+    return count;
+}
+
+void send_message_toPVP(Client* client, char *s) {
+    JRB node;
+    int destId, lenNumber = 0;
+    int success_flag = 0;
+    char buff[BUFF_SIZE] = { 0 };
+    pthread_mutex_lock(&clients_mutex);
+
+    sscanf(s, "%d", &destId);
+    lenNumber = len_of_number(destId);
+    strcpy(buff, s + lenNumber + 1);
+
+    
+    node = NULL;
+    jrb_traverse(node, clients) {
+        int buff = jval_i(node->key);
+        if (buff == destId) break;
+    }
+
+    if (node != NULL) {
+        Client *destCli = (Client *) jval_v(node->val);
+        if(destCli->ready_chat == 1) {
+            success_flag = 1;            
+            send(destCli->sockfd, buff, strlen(buff), 0);
+        }
+    }
+    /* If node == null or destCli not ready to chat*/
+    if (success_flag == 0) {
+        bzero(buff, sizeof(buff));
+        sprintf(buff, "%s %d","Can't send to", destId);
+        send(client->sockfd, buff, strlen(buff), 0);
+    }
+
+    pthread_mutex_unlock(&clients_mutex);
+}
+
+void send_message_toGroup(Client* client, char *s) {
+    JRB node;
+    char roomName[ROOM_NAME_LEN + 1] = { 0 };
+    char buff[BUFF_SIZE] = { 0 };
+    
+    pthread_mutex_lock(&clients_mutex);
+
+    sscanf(s, "%s", roomName);
+    strcpy(buff, s + strlen(roomName) + 1);
+    node = jrb_find_str(rooms, roomName);
+    if (node != NULL) {
+        Room *room = (Room *) jval_v(node->val);
+        for (int i = 0; i < room->number_guest; i++) {
+            JRB run;
+            if (room->arr_list_guest[i] != client->id) {
+                run = jrb_find_int(clients, room->arr_list_guest[i]);
+                if (run != NULL) {
+                    Client *cl = (Client *) jval_v(run->val);
+                    printf("%d %d %s %d", cl->id, cl->sockfd, cl->username, cl->ready_chat);
+                    if (cl->ready_chat == 1)
+                        send(cl->sockfd, buff, strlen(buff), 0);
+                }
+            }
+        } // send mess to all client in room and is ready to recving
+    } else {
+        bzero(buff, sizeof(buff));
+        sprintf(buff, "Can't send to %s", roomName);
+        printf("Can't send to group %s\n", roomName);
+        send(client->sockfd, buff, strlen(buff), 0);
     }
 
     pthread_mutex_unlock(&clients_mutex);

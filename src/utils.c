@@ -19,7 +19,7 @@ int prompt_input(char const *message, char *buff) {
 int prompt_input_ver2(char const *message, char *buff) {
     memset(buff, 0, sizeof(buff));
     printf("%s", message);
-    fgets(buff, BUFF_SIZE, stdin);
+    fgets(buff, sizeof(buff), stdin);
     int index = strlen(buff) - 1;
 
     if (buff[index] == '\n' && buff[index + 1] == '\0') {

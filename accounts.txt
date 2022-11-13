@@ -4,4 +4,4 @@ soict soictfit 2
 huy 123 3
 123 123 4
 345 345 5
-name password 6
+test test 6

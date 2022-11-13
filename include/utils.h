@@ -12,6 +12,7 @@
 
 #define BUFF_SIZE 1024
 #define CLIENT_NAME_LEN 32
+#define ROOM_NAME_LEN 32
 #define MAX_GUEST_IN_ROOM 100
 
 #define PRINT_ERROR printf("[Error at line %d in %s]: %s\n", __LINE__, __FILE__, strerror(errno))
@@ -21,6 +22,7 @@ typedef struct client {
     int sockfd;
     int id;
     char username[CLIENT_NAME_LEN];
+    int ready_chat; // is ready to chat ?
 } Client; 
 
 typedef struct account_ {
@@ -32,7 +34,7 @@ typedef struct account_ {
 
 typedef struct room_ {
     char owner_name[CLIENT_NAME_LEN];
-    char room_name[CLIENT_NAME_LEN];
+    char room_name[ROOM_NAME_LEN];
     int owner_id;
     // JRB list_guest; // Cực kì cẩn thận khi đọc list_guest rất hay bị lỗi do list JRB ko sạch
     int arr_list_guest[MAX_GUEST_IN_ROOM];

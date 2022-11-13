@@ -39,4 +39,23 @@ accounts.txt format
 username password id_user
 
 rooms.txt format
-roomName ownerName id_owner id_guest1 id_guest2 id_guest3 (...id_guestN)
+roomName ownerName id_owner num_guest
+id_owner (có thể thay đổi vị trí)
+id_guest1
+id_getst2
+...
+roomName2 ownerName2 id_owner2 num_guest
+
+(Không cần Type điều hướng đầu )
+chat với PVP
+destId mess
+
+chat group 
+group_name mess
+
+
+Lưu trữ trong chương trình khi đang chạy:
+JRB tree rooms
+- tồn tại 1 nhánh key = "PVP" là 1 tree
+    - Dạng key = id_nguoi1, value = id_nguoi2
+- Các nhánh còn lại key = room_name, value = room (có kiểu Room type)

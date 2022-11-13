@@ -13,14 +13,31 @@ typedef union chatWith {
 
 ChatWith with;
 
+int len_of_number(int number) {
+    int count = 0;
+    if (number == 0) return 1;
+    while (number > 0) {
+        number = number / 10;
+        count++;
+    }
+    return count;
+}
+
+void send_message_toPVP(char *s) {
+    JRB node;
+    int destId, lenNumber = 0;
+    char buff[BUFF_SIZE] = { 0 };
+
+    sscanf(s, "%d ", &destId);
+    lenNumber = len_of_number(destId);
+    strcpy(buff, s + lenNumber + 1);
+
+    printf("%d %s \n",destId, buff);
+}
+
 int main(int argc, char* argv[]) {
-    bzero(with.with_room, sizeof(with.with_room));
+    char buff[BUFF_SIZE];
 
-    printf("Input friend id: ");
-    scanf("%d%*c", &with.with_id);
-
-    printf("ID: %d\n", with.with_id);
-
-    prompt_input_ver2("Input room name: ", with.with_room);
-    printf("Name: %s\n", with.with_room); 
+    sprintf(buff, "%d %s", 12, "hellobaby");
+    send_message_toPVP(buff);
 }
