@@ -102,14 +102,16 @@ int auth_screen(Client *client, char *buff_out) {
             node = jrb_find_int(clients, findedAcc->user_id);
             
             if (node == NULL) {
+                // find node have same sockfd
                 jrb_traverse(node, clients) {
                     Client *cli = (Client *) jval_v(node->val);
-                    if (cli->sockfd == client->sockfd){
-                        node->key = new_jval_i(findedAcc->user_id);
-                        cli->id = findedAcc->user_id;
-                        strcpy(cli->username, findedAcc->username);
-                    }
+                    if (cli->sockfd == client->sockfd) break;
                 }
+
+                Client *cli = (Client *) jval_v(node->val);
+                node->key = new_jval_i(findedAcc->user_id);
+                cli->id = findedAcc->user_id;
+                strcpy(cli->username, findedAcc->username);
             }
                    
             send(client->sockfd, buff, strlen(buff), 0);
@@ -655,12 +657,27 @@ void send_message_toGroup(Client* client, char *s) {
         for (int i = 0; i < room->number_guest; i++) {
             JRB run;
             if (room->arr_list_guest[i] != client->id) {
-                run = jrb_find_int(clients, room->arr_list_guest[i]);
+                // find destClient
+                int finded = 0;;
+                jrb_traverse(run, clients) {
+                    int buff_i = jval_i(run->key);
+                    if (buff_i == room->arr_list_guest[i]) {
+                        finded = 1;
+                        printf("%d %d\n", buff_i, room->arr_list_guest[i]);
+                        break;
+                    }
+                }
+                if (finded == 0) run = NULL;
+
                 if (run != NULL) {
-                    Client *cl = (Client *) jval_v(run->val);
-                    printf("%d %d %s %d", cl->id, cl->sockfd, cl->username, cl->ready_chat);
-                    if (cl->ready_chat == 1)
-                        send(cl->sockfd, buff, strlen(buff), 0);
+                    Client*cli = (Client*) jval_v(run->val);
+                    PRINT_ERROR;
+                    printf("%d %d %s %d\n", cli->id, cli->sockfd, cli->username, cli->ready_chat);
+                    PRINT_ERROR;
+                    if (cli->ready_chat == 1){
+                        PRINT_ERROR;
+                        send(cli->sockfd, buff, strlen(buff), 0);
+                    }
                 }
             }
         } // send mess to all client in room and is ready to recving

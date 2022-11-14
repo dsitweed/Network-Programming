@@ -19,10 +19,13 @@ jrb_insert_str(accounts, acc->username, new_jval_v(acc));
 
 Account * findedAcc = (Account *) jval_v(node->val);
 
-
+<!-- BUG -->
 BUG:
 - yêu cầu chọn menu là int nhưng nhập vào string treo luôn 
-- Client thoat ra -> core dump
+- Client thoat ra -> core dump (Ở phần chat room)
+- Gửi tin dài bị ngắt
+- khi exit rồi bị in thừa ra 2 dòng 
+<!-- BUG -->
 
 <!-- GHi chus -->
 - delete room, delete guest se o trong man hinh chat 
