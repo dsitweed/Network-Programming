@@ -36,8 +36,20 @@ void send_message_toPVP(char *s) {
 }
 
 int main(int argc, char* argv[]) {
-    char buff[BUFF_SIZE];
+    JRB node = NULL, list = make_jrb();
 
-    sprintf(buff, "%d %s", 12, "hellobaby");
-    send_message_toPVP(buff);
+    jrb_insert_int(list, 1, new_jval_i(1));
+
+    jrb_traverse(node, list) {
+        if (jval_i(node->key) == 1) break;
+    }
+
+    node->key = new_jval_i(3);
+
+    node = jrb_find_int(list, 3);
+
+    if (node == NULL) {
+        printf ("NULL\n");
+    } else 
+        printf ("NOT NULL %d\n", jval_i(node->key));
 }

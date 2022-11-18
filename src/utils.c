@@ -1,9 +1,13 @@
 #include "utils.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <signal.h>
 
 int prompt_input(char const *message, char *buff) {
     memset(buff, 0, sizeof(buff));
+    bzero(buff, sizeof(buff));
     printf("%s", message);
     fgets(buff, BUFF_SIZE, stdin);
     int index = strlen(buff) - 1;
@@ -67,4 +71,24 @@ int config_server(int *fd, struct sockaddr_in *addr) {
     }
     addr->sin_port = strtol(buff, NULL, 10);
     return 0;
+}
+
+int sendData(int sockfd, char *data, int len) {
+    int sent = 0;
+    int tmp = 0;
+    do {
+        tmp = send(sockfd, data + sent, len - sent, 0);
+        sent += tmp;
+    } while (tmp > 0 && sent < len );
+    return sent;
+}
+
+int recvData(int sockfd, char *data, int len) {
+    int received = 0, tmp = 0;
+
+    do {
+        tmp = recv(sockfd, data + received, len, 0);
+        received += tmp;
+    } while (tmp < 0 && received < len);
+    return received;
 }

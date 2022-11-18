@@ -165,7 +165,7 @@ int select_room_menu(int sockfd) {
                 break;
             case 2:
                 printf("Show list rooms\n");
-                printf("%-20s %s\n", "Room ID", "Room Owner name");
+                printf("%-20s %-20s\n", "Room ID", "Room Owner name");
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d", SHOW_LIST_ROOMS);
                 send(sockfd, buff, strlen(buff), 0);
@@ -190,6 +190,7 @@ int select_room_menu(int sockfd) {
                 break;
             case 4:
                 printf("Show list users \n");
+                printf("%-32s %-20s\n", "Username", "User ID");
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d", SHOW_LIST_USERS);
                 send(sockfd, buff, strlen(buff), 0);
@@ -244,7 +245,7 @@ int select_room_menu(int sockfd) {
     if (exit_flag == EXIT) return EXIT;
     if (exit_flag == PVP_CHAT) return PVP_CHAT;
     if (exit_flag == JOIN_ROOM) return JOIN_ROOM;
-    return 1;
+    return 0;
 }
 
 // return 1 no error
@@ -318,7 +319,7 @@ int main(int argc, char const *argv[]) {
         if (main_exit_flag == 1) break;
         /* Select room  */
         typeChat = select_room_menu(sockfd);
-        if (typeChat == EXIT) break;
+        if (typeChat == EXIT || typeChat == 0) break;
 
         /* Chat PvP or Chat with Room */
         err = chat_in_room_menu(sockfd);

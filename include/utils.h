@@ -66,24 +66,8 @@ void clear_line();
 */
 int config_server(int *fd, struct sockaddr_in *addr);
 
-int sendData(int sockfd, char *data, int len) {
-    int sent = 0;
-    int tmp = 0;
-    do {
-        tmp = send(sockfd, data + sent, len - sent, 0);
-        sent += tmp;
-    } while (tmp > 0 && sent < len );
-    return sent;
-}
+int sendData(int sockfd, char *data, int len);
 
-int recvData(int sockfd, char *data, int len) {
-    int received = 0, tmp = 0;
-
-    do {
-        tmp = recv(sockfd, data + received, BUFF_SIZE, 0);
-        received += tmp;
-    } while (tmp < 0 && received < len && received < BUFF_SIZE);
-    return received;
-}
+int recvData(int sockfd, char *data, int len);
 
 #endif  // UTILS_H
