@@ -62,3 +62,8 @@ JRB tree rooms
 - tồn tại 1 nhánh key = "PVP" là 1 tree
     - Dạng key = id_nguoi1, value = id_nguoi2
 - Các nhánh còn lại key = room_name, value = room (có kiểu Room type)
+
+Các hướng phát triển tiếp:
+- Lưu trữ các đoạn chat của PVP - Hiển thị lên màn hình
+- 
+- 

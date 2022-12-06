@@ -7,7 +7,6 @@
 
 int prompt_input(char const *message, char *buff) {
     memset(buff, 0, sizeof(buff));
-    bzero(buff, sizeof(buff));
     printf("%s", message);
     fgets(buff, BUFF_SIZE, stdin);
     int index = strlen(buff) - 1;
@@ -73,22 +72,27 @@ int config_server(int *fd, struct sockaddr_in *addr) {
     return 0;
 }
 
-int sendData(int sockfd, char *data, int len) {
+int sendData(int fd, char* data, int len)
+{
     int sent = 0;
     int tmp = 0;
-    do {
-        tmp = send(sockfd, data + sent, len - sent, 0);
+    do
+    {
+        tmp = send(fd, data + sent, len - sent, 0);
         sent += tmp;
-    } while (tmp > 0 && sent < len );
+    } while (tmp >= 0 && sent < len);
     return sent;
 }
 
-int recvData(int sockfd, char *data, int len) {
-    int received = 0, tmp = 0;
-
-    do {
-        tmp = recv(sockfd, data + received, len, 0);
+int recvData(int fd, char* data, int maxlen)
+{
+    int received = 0;
+    int blocksize = 1024;
+    int tmp = 0;
+    do
+    {
+        tmp = recv(fd, data + received, blocksize, 0);
         received += tmp;
-    } while (tmp < 0 && received < len);
+    } while (tmp >= 0 && received < maxlen && tmp == blocksize);
     return received;
 }

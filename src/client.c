@@ -336,19 +336,25 @@ void send_msg_handler() {
     char buffer[BUFF_SIZE + CLIENT_NAME_LEN * 2 + 3];  // = message + name of user + 3 (for 3 time \0)
 
     while (1) {
-        prompt_input_ver2("> You: ", message);
+        printf("> You: ");
+        fgets(message, sizeof(message), stdin);
+        int index = strlen(message) - 1;
+
+        if (message[index] == '\n' && message[index + 1] == '\0') {
+            message[index] = '\0';
+        }
 
         if (strcmp(message, "exit") == 0) {
             sprintf(buffer, "%s", "exit");
-            send(sockfd,buffer, strlen(buffer), 0);
+            sendData(sockfd,buffer, strlen(buffer));
             signal_handler(1);
             break;
         } else if (typeChat == PVP_CHAT) {
             sprintf(buffer, "%d %s: %s", with.with_id, clientName, message);
-            send(sockfd, buffer, strlen(buffer), 0);
+            sendData(sockfd,buffer, strlen(buffer));
         } else if (typeChat == JOIN_ROOM) {
             sprintf(buffer, "%s %s: %s", with.with_room ,clientName, message);
-            send(sockfd, buffer, strlen(buffer), 0);
+            sendData(sockfd,buffer, strlen(buffer));
         }  // end send message
 
         fflush(stdout);
@@ -366,7 +372,7 @@ void recv_msg_handler() {
             printf("End chat- recvfunction\n");
             break;
         }
-        received = recv(sockfd, message, sizeof(message), 0);
+        received = recvData(sockfd, message, sizeof(message));
 
         if (received > 0) {
             clear_line();

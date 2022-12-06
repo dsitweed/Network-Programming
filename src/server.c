@@ -471,13 +471,12 @@ int select_room_screen(Client *client, char *buff_out) {
 
 int chat_in_room_screen(Client *client, int typeChat) {
     JRB node;
-    int back_flag = 0;
     char buff[BUFF_SIZE] = {0};
 
     while (1) {
         bzero(buff, sizeof(buff));
-        int received = recv(client->sockfd, buff, sizeof(buff), 0);
-        printf("Check chat_in_room_screee: Type: %d, received Bytes: %d\n", typeChat, received);
+        int received = recvData(client->sockfd, buff, sizeof(buff));
+        printf("Check chat_in_room_screen: Type: %d, received Bytes: %d\n", typeChat, received);
         if (received == 0 || strcmp(buff, "exit") == 0) {
             client->ready_chat = 0;
             node = NULL;
@@ -510,10 +509,8 @@ int chat_in_room_screen(Client *client, int typeChat) {
 
 void *handle_client(void *arg) {
     Client* cli = (Client*) arg;  // Client - is a poiter
-    JRB node;
     char buff_out[BUFF_SIZE + CLIENT_NAME_LEN + 3] = {0};  // save send string from clients
     int leave_flag = 0;
-    int screen_flag = 0;
     int type = -1;  // type of mess send from clients
 
     int chat_room_type = 0;  // type chat at select_room_screen
@@ -530,7 +527,7 @@ void *handle_client(void *arg) {
         /* received navigate screen control */
         bzero(buff_out, sizeof(buff_out));
         int received = 0;
-        if (received = recv(cli->sockfd, buff_out, sizeof(buff_out), 0) <= 0) break; // exit
+        if (recv(cli->sockfd, buff_out, sizeof(buff_out), 0) <= 0) break; // exit
         printf("received: %d; buffsize:  %ld\n", received, strlen(buff_out));
         printf("%s\n", buff_out);
 
@@ -565,6 +562,7 @@ void *handle_client(void *arg) {
 
     cli_count--;
     pthread_detach(pthread_self());
+    return NULL;
 }
 
 void handle_exit() {
@@ -630,14 +628,14 @@ void send_message_toPVP(Client* client, char *s) {
         Client *destCli = (Client *) jval_v(node->val);
         if(destCli->ready_chat == 1) {
             success_flag = 1;            
-            send(destCli->sockfd, buff, strlen(buff), 0);
+            sendData(destCli->sockfd, buff, strlen(buff));
         }
     }
     /* If node == null or destCli not ready to chat*/
     if (success_flag == 0) {
         bzero(buff, sizeof(buff));
         sprintf(buff, "%s %d","Can't send to", destId);
-        send(client->sockfd, buff, strlen(buff), 0);
+        sendData(client->sockfd, buff, strlen(buff));
     }
 
     pthread_mutex_unlock(&clients_mutex);
@@ -677,7 +675,7 @@ void send_message_toGroup(Client* client, char *s) {
                     PRINT_ERROR;
                     if (cli->ready_chat == 1){
                         PRINT_ERROR;
-                        send(cli->sockfd, buff, strlen(buff), 0);
+                        sendData(cli->sockfd, buff, strlen(buff));
                     }
                 }
             }
