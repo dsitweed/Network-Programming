@@ -56,7 +56,7 @@ int auth_menu(int sockfd) {
     /* send navigate screen control */
     do {
         bzero(buff, sizeof(buff));
-        sprintf(buff, "%d", AUTH_SCREEEN);
+        sprintf(buff, "%d", AUTH_SCREEN);
         send(sockfd, buff, strlen(buff), 0);
 
         printf(

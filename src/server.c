@@ -29,7 +29,7 @@ static int user_id = 0;
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void *handle_client(void *arg);
-void handle_exit(); // for sersev exit
+void handle_exit(); // for server exit
 void send_message(char *s, int uid);
 void send_message_toPVP(Client* client, char *s);
 void send_message_toGroup(Client* client, char *s);
@@ -203,7 +203,7 @@ int main(int argc, char const *argv[]) {
         return EXIT_FAILURE;
     }
 
-    // get account list from FIle
+    // get account list from File
     accounts = make_jrb();
     accounts = getAccList("accounts.txt");
     if (accounts == NULL) {
@@ -271,10 +271,10 @@ int main(int argc, char const *argv[]) {
         
         JRB node;
         int i = 0;
-        printf("%s %s %s %s\n", "number_cli", "client_id", "node->key", "client->sockfd");
+        printf("%-10s %-10s %-10s %-10s\n", "number_cli", "client_id", "node->key", "client->sockfd");
         jrb_traverse(node, clients) {
             Client* cli = (Client*) jval_v(node->val);
-            printf("%d %d %d %d\n", i++, cli->id, jval_i(node->key), cli->sockfd);
+            printf("%-10d %-10d %-10d %-10d\n", ++i, cli->id, jval_i(node->key), cli->sockfd);
         }
 
         pthread_create(&thread_id, NULL, handle_client, client);
@@ -282,7 +282,7 @@ int main(int argc, char const *argv[]) {
         sleep(1);
     }
 
-    printf("end\n");
+    printf("\nEND\n");
     close(listenfd);
     return EXIT_SUCCESS;
 }
@@ -508,13 +508,13 @@ int chat_in_room_screen(Client *client, int typeChat) {
 }
 
 void *handle_client(void *arg) {
-    Client* cli = (Client*) arg;  // Client - is a poiter
+    Client* cli = (Client*) arg;  // Client - is a pointer
     char buff_out[BUFF_SIZE + CLIENT_NAME_LEN + 3] = {0};  // save send string from clients
     int leave_flag = 0;
     int type = -1;  // type of mess send from clients
 
     int chat_room_type = 0;  // type chat at select_room_screen
-    int res = 0; // response from child funtion
+    int res = 0; // response from child function
 
     cli_count++;
 
@@ -536,7 +536,7 @@ void *handle_client(void *arg) {
         else break; // exit
 
         switch (type) {
-            case AUTH_SCREEEN:
+            case AUTH_SCREEN:
                 bzero(buff_out, sizeof(buff_out));
                 received = recv(cli->sockfd, buff_out, sizeof(buff_out), 0);
                 res = auth_screen(cli, buff_out);

@@ -64,5 +64,3 @@ JRB tree rooms
 
 Các hướng phát triển tiếp:
 - Lưu trữ các đoạn chat của PVP - Hiển thị lên màn hình
-- 
-- 

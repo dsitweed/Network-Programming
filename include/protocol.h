@@ -14,7 +14,7 @@ enum msg_type {
     PVP_CHAT,
     CONTACT,
 
-    AUTH_SCREEEN,
+    AUTH_SCREEN,
     SELECT_ROOM_SCREEN,
     CHAT_IN_ROOM_SCREEN,
 
