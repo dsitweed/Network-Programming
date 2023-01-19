@@ -526,10 +526,9 @@ void *handle_client(void *arg) {
 
         /* received navigate screen control */
         bzero(buff_out, sizeof(buff_out));
-        int received = 0;
-        if (recv(cli->sockfd, buff_out, sizeof(buff_out), 0) <= 0) break; // exit
-        printf("received: %d; buffsize:  %ld\n", received, strlen(buff_out));
-        printf("%s\n", buff_out);
+        int received = recv(cli->sockfd, buff_out, sizeof(buff_out), 0);
+        if (received <= 0) break; // exit
+        printf("received: %d; string size:  %ld; String received: %s\n", received, strlen(buff_out), buff_out);
 
         /* Read type of navigate screen control */
         if (strlen(buff_out) > 0) sscanf(buff_out, "%d", &type);

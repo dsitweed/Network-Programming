@@ -28,22 +28,20 @@ typedef struct client {
 /* An integer type which can be accessed as an atomic
 entity even in the presence of asynchronous interrupts made by signals.*/
 volatile sig_atomic_t exit_flag = 0;
-char clientName[CLIENT_NAME_LEN] = "Default_name"; // save client name at global variable
-int sockfd = 0;  // socket of this client
+char clientName[CLIENT_NAME_LEN] = "Default_name";  // save client name at global variable
+int sockfd = 0;                                     // socket of this client
 
 void signal_handler(int sig);
 void send_msg_handler();
 void recv_msg_handler();
 
-typedef union chatWith
-{
+typedef union chatWith {
     char with_room[33];
     int with_id;
 } ChatWith;
 
 ChatWith with;
 int typeChat;
-
 
 // return 0 error
 // return 1 -> ... is success
@@ -69,8 +67,8 @@ int auth_menu(int sockfd) {
         switch (menu) {
             case 1:
                 printf("SIGN UP\n");
-                prompt_input_ver2("Nhap username: ", acc.username);
-                prompt_input_ver2("Nhap password: ", acc.password);
+                prompt_input_ver2("Input username: ", acc.username);
+                prompt_input_ver2("Input password: ", acc.password);
 
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d %s %s", SIGN_UP, acc.username, acc.password);
@@ -81,17 +79,17 @@ int auth_menu(int sockfd) {
                 if (err >= 0) {
                     response = atoi(buff);
                     if (response == SUCCESS) {
-                        printf("success\n");
+                        printf("Sign up success\n");
                     }
                     if (response == FAILED) {
-                        printf("failed\n");
+                        printf("Sign up failed\n");
                     }
                 }
                 break;
             case 2:
                 printf("SIGN IN\n");
-                prompt_input_ver2("Nhap username: ", acc.username);
-                prompt_input_ver2("Nhap password: ", acc.password);
+                prompt_input_ver2("Input username: ", acc.username);
+                prompt_input_ver2("Input password: ", acc.password);
 
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d %s %s", SIGN_IN, acc.username, acc.password);
@@ -99,22 +97,22 @@ int auth_menu(int sockfd) {
 
                 bzero(buff, sizeof(buff));
                 err = recv(sockfd, buff, sizeof(buff), 0);
-                printf("%s - %ld\n", buff, strlen(buff));
+                printf("String received: %s - String length: %ld\n", buff, strlen(buff));
                 if (err >= 0) {
                     response = atoi(buff);
                     if (response == SUCCESS) {
-                        printf("success\n");
+                        printf("Sign in success\n");
                         strcpy(clientName, acc.username);
                         return 1;
                     }
                     if (response == FAILED) {
-                        printf("failed\n");
+                        printf("Sign in failed\n");
                     }
                 } else
                     printf("Error\n");
                 break;
             case 3:
-                printf("EXIT\n");
+                printf("\nEXIT\n");
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d %s", SIGN_OUT, clientName);
                 err = send(sockfd, buff, strlen(buff), 0);
@@ -155,7 +153,7 @@ int select_room_menu(int sockfd) {
         switch (menu) {
             case 1:
                 printf("Create new room\n");
-                prompt_input_ver2("Name of room (PVP name can't to used): ", new_room->room_name);
+                prompt_input_ver2("Name of room: ", new_room->room_name);
                 strcpy(new_room->owner_name, clientName);
 
                 bzero(buff, sizeof(buff));
@@ -185,7 +183,7 @@ int select_room_menu(int sockfd) {
                 sprintf(buff, "%d %s", JOIN_ROOM, with.with_room);
                 send(sockfd, buff, strlen(buff), 0);
 
-                menu = 6; // break out while
+                menu = 6;  // break out while
                 exit_flag = JOIN_ROOM;
                 break;
             case 4:
@@ -210,7 +208,7 @@ int select_room_menu(int sockfd) {
                 sprintf(buff, "%d %d", PVP_CHAT, with.with_id);
                 send(sockfd, buff, strlen(buff), 0);
 
-                menu = 6; // break out while
+                menu = 6;  // break out while
                 exit_flag = PVP_CHAT;
                 break;
             }
@@ -218,8 +216,8 @@ int select_room_menu(int sockfd) {
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d", SIGN_OUT);
                 send(sockfd, buff, strlen(buff), 0);
-                
-                menu = 6; // break out while
+
+                menu = 6;  // break out while
                 exit_flag = EXIT;
                 break;
             default:
@@ -233,11 +231,11 @@ int select_room_menu(int sockfd) {
         if (err >= 0) {
             response = atoi(buff);
             if (response == SUCCESS) {
-                printf("success\n");
+                printf("SERVER responded: SUCCESS\n");
             }
             if (response == FAILED) {
-                menu = 0; // return while loop
-                printf("failed\n");
+                menu = 0;  // return while loop
+                printf("SERVER responded: FAILED\n");
             }
         }
     } while (menu != 6);
@@ -275,8 +273,8 @@ int chat_in_room_menu(int sockfd) {
     // communicate with server
     while (1) {
         if (exit_flag) {
-            pthread_detach(recv_mesg_thread);    
-            pthread_detach(send_mesg_thread);    
+            pthread_detach(recv_mesg_thread);
+            pthread_detach(send_mesg_thread);
             printf("\nEND CHATROOOM.\n");
             break;
         }
@@ -346,15 +344,15 @@ void send_msg_handler() {
 
         if (strcmp(message, "exit") == 0) {
             sprintf(buffer, "%s", "exit");
-            sendData(sockfd,buffer, strlen(buffer));
+            sendData(sockfd, buffer, strlen(buffer));
             signal_handler(1);
             break;
         } else if (typeChat == PVP_CHAT) {
             sprintf(buffer, "%d %s: %s", with.with_id, clientName, message);
-            sendData(sockfd,buffer, strlen(buffer));
+            sendData(sockfd, buffer, strlen(buffer));
         } else if (typeChat == JOIN_ROOM) {
-            sprintf(buffer, "%s %s: %s", with.with_room ,clientName, message);
-            sendData(sockfd,buffer, strlen(buffer));
+            sprintf(buffer, "%s %s: %s", with.with_room, clientName, message);
+            sendData(sockfd, buffer, strlen(buffer));
         }  // end send message
 
         fflush(stdout);

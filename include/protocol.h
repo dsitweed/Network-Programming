@@ -13,6 +13,7 @@ enum msg_type {
     SHOW_LIST_USERS, // user is online - logined
     PVP_CHAT,
     CONTACT,
+    SEND_FILE,
 
     AUTH_SCREEN,
     SELECT_ROOM_SCREEN,
