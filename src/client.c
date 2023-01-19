@@ -14,6 +14,15 @@
 #include "protocol.h"
 #include "utils.h"
 
+#define RED "\x1B[31m"
+#define GRN "\x1B[32m"
+#define YEL "\x1B[33m"
+#define BLU "\x1B[34m"
+#define MAG "\x1B[35m"
+#define CYN "\x1B[36m"
+#define WHT "\x1B[37m"
+#define RESET "\x1B[0m"
+
 /*
 typedef struct client {
     struct sockaddr_in addr;
@@ -28,22 +37,20 @@ typedef struct client {
 /* An integer type which can be accessed as an atomic
 entity even in the presence of asynchronous interrupts made by signals.*/
 volatile sig_atomic_t exit_flag = 0;
-char clientName[CLIENT_NAME_LEN] = "Default_name"; // save client name at global variable
-int sockfd = 0;  // socket of this client
+char clientName[CLIENT_NAME_LEN] = "Guest";  // save client name at global variable
+int sockfd = 0;                              // socket of this client
 
 void signal_handler(int sig);
 void send_msg_handler();
 void recv_msg_handler();
 
-typedef union chatWith
-{
+typedef union chatWith {
     char with_room[33];
     int with_id;
 } ChatWith;
 
 ChatWith with;
 int typeChat;
-
 
 // return 0 error
 // return 1 -> ... is success
@@ -81,10 +88,10 @@ int auth_menu(int sockfd) {
                 if (err >= 0) {
                     response = atoi(buff);
                     if (response == SUCCESS) {
-                        printf("Sign up SUCCESS\n");
+                        printf(GRN "Sign up SUCCESS\n" RESET);
                     }
                     if (response == FAILED) {
-                        printf("Sign up FAILED\n");
+                        printf(RED "This username is already taken\n" RESET);
                     }
                 }
                 break;
@@ -103,15 +110,15 @@ int auth_menu(int sockfd) {
                 if (err >= 0) {
                     response = atoi(buff);
                     if (response == SUCCESS) {
-                        printf("Server responded SUCCESS\n\n");
+                        printf(GRN "Login succeeded\n\n" RESET);
                         strcpy(clientName, acc.username);
                         return 1;
                     }
                     if (response == FAILED) {
-                        printf("Server responded FAILED\n\n");
+                        printf(RED "Invalid credentials\n\n" RESET);
                     }
                 } else
-                    printf("Error\n");
+                    printf(RED "Error\n" RESET);
                 break;
             case 3:
                 printf("\nEXIT\n");
@@ -121,7 +128,7 @@ int auth_menu(int sockfd) {
                 return 0;
                 break;
             default:
-                printf("Please select valid options\n");
+                printf(RED "Please select valid options\n" RESET);
                 break;
         }  // end switch
     } while (menu != 5);
@@ -167,7 +174,7 @@ int select_room_menu(int sockfd) {
                 break;
             case 2:
                 printf("Show list rooms\n");
-                printf("%-20s %-20s\n", "Room ID", "Room Owner name");
+                printf("%-20s %-20s\n", "Room ID", "Owner");
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d", SHOW_LIST_ROOMS);
                 send(sockfd, buff, strlen(buff), 0);
@@ -191,7 +198,7 @@ int select_room_menu(int sockfd) {
                 break;
             case 4:
                 printf("Show list users \n");
-                printf("%-32s %-20s\n", "Username", "User ID");
+                printf("%-32s %-20s\n", "Username", "UserID");
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d", SHOW_LIST_USERS);
                 send(sockfd, buff, strlen(buff), 0);
@@ -236,12 +243,12 @@ int select_room_menu(int sockfd) {
             if (err >= 0) {
                 response = atoi(buff);
                 if (response == SUCCESS) {
-                    printf("success\n");
-                }
-                if (response == FAILED) {
-                    menu = 0; // return while loop
-                    printf("failed\n");
-                }
+                printf(GRN "success\n" RESET);
+            }
+            if (response == FAILED) {
+                menu = 0;  // return while loop
+                printf(RED "failed\n" RESET);
+            }
             }
         }
     } while (menu != 6);
@@ -265,12 +272,12 @@ int chat_in_room_menu(int sockfd) {
     printf("===== WELCOME TO THE CHATROOM =====\n");
 
     if (pthread_create(&send_mesg_thread, NULL, (void *)send_msg_handler, NULL) != 0) {
-        printf("ERROR: pthread\n");
+        printf(RED "ERROR: pthread\n" RESET);
         return EXIT_FAILURE;
     }
 
     if (pthread_create(&recv_mesg_thread, NULL, (void *)recv_msg_handler, NULL) != 0) {
-        printf("ERROR: pthread\n");
+        printf(RED "ERROR: pthread\n" RESET);
         return EXIT_FAILURE;
     }
 
@@ -288,7 +295,7 @@ int chat_in_room_menu(int sockfd) {
 
 int main(int argc, char const *argv[]) {
     if (argc != 2) {
-        printf("Usage: %s <port>\n", argv[1]);
+        printf(RED "Usage: %s <port>\n" RESET, argv[1]);
         return EXIT_FAILURE;
     }
 
@@ -308,7 +315,7 @@ int main(int argc, char const *argv[]) {
     /*Connect to server*/
     err = connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
     if (err == -1) {
-        printf("ERROR: connect\n");
+        printf(RED "ERROR: connect\n" RESET);
         close(sockfd);
         return EXIT_FAILURE;
     }
@@ -357,10 +364,10 @@ void send_msg_handler() {
             break;
         } else if (typeChat == PVP_CHAT) {
             sprintf(buffer, "%d %s: %s", with.with_id, clientName, message);
-            sendData(sockfd,buffer, strlen(buffer));
+            sendData(sockfd, buffer, strlen(buffer));
         } else if (typeChat == JOIN_ROOM) {
-            sprintf(buffer, "%s %s: %s", with.with_room ,clientName, message);
-            sendData(sockfd,buffer, strlen(buffer));
+            sprintf(buffer, "%s %s: %s", with.with_room, clientName, message);
+            sendData(sockfd, buffer, strlen(buffer));
         }  // end send message
 
         fflush(stdout);
