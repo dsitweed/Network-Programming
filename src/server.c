@@ -54,7 +54,6 @@ int auth_screen(Client *client, char *buff_out) {
     char buff[BUFF_SIZE] = {0};
     // get type
     sscanf(buff_out, "%d", &type);
-    printf("Message: %s\n", buff_out);
     if (type != SIGN_IN && type != SIGN_UP && type != SIGN_OUT) return 0;
 
     if (type != SIGN_OUT) {
@@ -491,7 +490,9 @@ int chat_in_room_screen(Client *client, int typeChat) {
                 Client *cl = (Client *) jval_v(node->val);
                 cl->ready_chat = 0;
             }
-            fflush(stdout);
+            bzero(buff, sizeof(buff));
+            sprintf(buff, "%d", EXIT);
+            sendData(client->sockfd, buff, strlen(buff));
             break;
         } else if (received > 0 && typeChat == PVP_CHAT) {
             printf("Send PVP: %s -> %s\n", client->username, buff);
@@ -681,7 +682,7 @@ void send_message_toGroup(Client* client, char *s) {
                     }
                 }
             }
-        } // send mess to all client in room and is ready to recving
+        } // send mess to all client in room and is ready to receiving
     } else {
         bzero(buff, sizeof(buff));
         sprintf(buff, "Can't send to %s", roomName);

@@ -11,8 +11,8 @@
 #include <time.h>
 
 #define BUFF_SIZE 1024
-#define CLIENT_NAME_LEN 32
-#define ROOM_NAME_LEN 32
+#define CLIENT_NAME_LEN 50
+#define ROOM_NAME_LEN 50
 #define MAX_GUEST_IN_ROOM 100
 
 #define PRINT_ERROR printf("[Error at line %d in %s]: %s\n", __LINE__, __FILE__, strerror(errno))
@@ -27,7 +27,7 @@ typedef struct client {
 
 typedef struct account_ {
     char username[CLIENT_NAME_LEN];
-    char password[32];
+    char password[CLIENT_NAME_LEN];
     int accStatus;
     int user_id;
 } Account;
@@ -42,8 +42,7 @@ typedef struct room_ {
 } Room;
 
 int prompt_input(char const *message, char *buff); // Cấp phát động bộ nhớ cho buff
-int prompt_input_ver2(char const *message, char *buff);// Buff bộ nhớ cố định 
-int prompt_input_ver3(char const *message, char *buff, int length);// Buff bộ nhớ cố định 
+int prompt_input_ver2(char const *message, char *buff, int length);// Buff bộ nhớ cố định 
 
 void str_trim_lf(char *arr);
 

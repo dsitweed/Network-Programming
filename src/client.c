@@ -69,8 +69,8 @@ int auth_menu(int sockfd) {
         switch (menu) {
             case 1:
                 printf("SIGN UP\n");
-                prompt_input_ver2("Input username: ", acc.username);
-                prompt_input_ver2("Input password: ", acc.password);
+                prompt_input_ver2("Input username: ", acc.username, sizeof(acc.username));
+                prompt_input_ver2("Input password: ", acc.password, sizeof(acc.password));
 
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d %s %s", SIGN_UP, acc.username, acc.password);
@@ -90,8 +90,8 @@ int auth_menu(int sockfd) {
                 break;
             case 2:
                 printf("SIGN IN\n");
-                prompt_input_ver3("Input username: ", acc.username, 32);
-                prompt_input_ver3("Input password: ", acc.password, 32);
+                prompt_input_ver2("Input username: ", acc.username, sizeof(acc.username));
+                prompt_input_ver2("Input password: ", acc.password, sizeof(acc.password));
 
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d %s %s", SIGN_IN, acc.username, acc.password);
@@ -132,10 +132,12 @@ int select_room_menu(int sockfd) {
     int menu, err = 0;
     char buff[BUFF_SIZE * 2] = {0};
     int response;
-    int exit_flag = 0;
+    int action_flag = 0;
     Room *new_room = (Room *)malloc(sizeof(Room));
 
     bzero(with.with_room, sizeof(with.with_room));
+    /* Restart thread send message and thread receive message */
+    exit_flag = 0; 
     /* send navigate screen control */
     do {
         bzero(buff, sizeof(buff));
@@ -155,7 +157,7 @@ int select_room_menu(int sockfd) {
         switch (menu) {
             case 1:
                 printf("Create new room\n");
-                prompt_input_ver2("Name of room (PVP name can't to used): ", new_room->room_name);
+                prompt_input_ver2("Name of room: ", new_room->room_name, sizeof(new_room->room_name));
                 strcpy(new_room->owner_name, clientName);
 
                 bzero(buff, sizeof(buff));
@@ -179,14 +181,13 @@ int select_room_menu(int sockfd) {
                 break;
             case 3:
                 printf("Join room by name\n");
-                prompt_input_ver2("Input room name: ", with.with_room);
-
+                prompt_input_ver2("Input room name: ", with.with_room, 32);
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d %s", JOIN_ROOM, with.with_room);
                 send(sockfd, buff, strlen(buff), 0);
 
                 menu = 6; // break out while
-                exit_flag = JOIN_ROOM;
+                action_flag = JOIN_ROOM;
                 break;
             case 4:
                 printf("Show list users \n");
@@ -211,7 +212,7 @@ int select_room_menu(int sockfd) {
                 send(sockfd, buff, strlen(buff), 0);
 
                 menu = 6; // break out while
-                exit_flag = PVP_CHAT;
+                action_flag = PVP_CHAT;
                 break;
             }
             case 6:
@@ -220,31 +221,34 @@ int select_room_menu(int sockfd) {
                 send(sockfd, buff, strlen(buff), 0);
                 
                 menu = 6; // break out while
-                exit_flag = EXIT;
+                action_flag = EXIT;
                 break;
             default:
                 printf("Please select valid options\n");
+                action_flag = -1;
                 break;
         }  // end switch
 
         /* check response from client  */
-        bzero(buff, sizeof(buff));
-        err = recv(sockfd, buff, sizeof(buff), 0);
-        if (err >= 0) {
-            response = atoi(buff);
-            if (response == SUCCESS) {
-                printf("success\n");
-            }
-            if (response == FAILED) {
-                menu = 0; // return while loop
-                printf("failed\n");
+        if(action_flag != -1) {
+            bzero(buff, sizeof(buff));
+            err = recv(sockfd, buff, sizeof(buff), 0);
+            if (err >= 0) {
+                response = atoi(buff);
+                if (response == SUCCESS) {
+                    printf("success\n");
+                }
+                if (response == FAILED) {
+                    menu = 0; // return while loop
+                    printf("failed\n");
+                }
             }
         }
     } while (menu != 6);
 
-    if (exit_flag == EXIT) return EXIT;
-    if (exit_flag == PVP_CHAT) return PVP_CHAT;
-    if (exit_flag == JOIN_ROOM) return JOIN_ROOM;
+    if (action_flag == EXIT) return EXIT;
+    if (action_flag == PVP_CHAT) return PVP_CHAT;
+    if (action_flag == JOIN_ROOM) return JOIN_ROOM;
     return 0;
 }
 
@@ -253,8 +257,6 @@ int chat_in_room_menu(int sockfd) {
     char buff[BUFF_SIZE];
     pthread_t send_mesg_thread;
     pthread_t recv_mesg_thread;
-
-    signal(SIGINT, signal_handler);
 
     bzero(buff, sizeof(buff));
     sprintf(buff, "%d", CHAT_IN_ROOM_SCREEN);
@@ -274,12 +276,12 @@ int chat_in_room_menu(int sockfd) {
 
     // communicate with server
     while (1) {
-        if (exit_flag) {
+        if(exit_flag) {
             pthread_detach(recv_mesg_thread);    
-            pthread_detach(send_mesg_thread);    
-            printf("\nEND CHATROOOM.\n");
+            pthread_detach(send_mesg_thread);
+            printf("\nEND CHAT ROOM.\n");
             break;
-        }
+        }    
     }
     return 1;
 }
@@ -295,7 +297,7 @@ int main(int argc, char const *argv[]) {
     char *IP = "127.0.0.1";
     int PORT = atoi(argv[1]);
 
-    // signal(SIGINT, signal_handler);
+    signal(SIGINT, signal_handler);
 
     /*Socket settings*/
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -329,7 +331,11 @@ int main(int argc, char const *argv[]) {
     return EXIT_SUCCESS;
 }
 
-void signal_handler(int sig) { exit_flag = sig; }
+void signal_handler(int sig) {
+    // printf("END CHAT ROOM\n\n");
+    exit_flag = 1;
+    exit(0);
+}
 
 void send_msg_handler() {
     char message[BUFF_SIZE];
@@ -344,10 +350,10 @@ void send_msg_handler() {
             message[index] = '\0';
         }
 
-        if (strcmp(message, "exit") == 0) {
+        if (strcasecmp(message, "exit") == 0) {
             sprintf(buffer, "%s", "exit");
             sendData(sockfd,buffer, strlen(buffer));
-            signal_handler(1);
+            exit_flag = 1;
             break;
         } else if (typeChat == PVP_CHAT) {
             sprintf(buffer, "%d %s: %s", with.with_id, clientName, message);
@@ -368,17 +374,17 @@ void recv_msg_handler() {
     int received = 0;
 
     while (1) {
-        if (exit_flag == 1) {
-            printf("End chat- recvfunction\n");
+        received = recvData(sockfd, message, sizeof(message));
+        int action_flag = 0;
+        sscanf(message, "%d", &action_flag);
+        if (action_flag == EXIT) {
             break;
         }
-        received = recvData(sockfd, message, sizeof(message));
 
         if (received > 0) {
             clear_line();
             printf("> %s\n", message);
             printf("> You: ");
-            fflush(stdout);
         } else if (received == 0) {
             break;
         } else {

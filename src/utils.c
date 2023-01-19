@@ -6,7 +6,6 @@
 #include <signal.h>
 
 int prompt_input(char const *message, char *buff) {
-    memset(buff, 0, sizeof(buff));
     printf("%s", message);
     fgets(buff, BUFF_SIZE, stdin);
     int index = strlen(buff) - 1;
@@ -19,21 +18,7 @@ int prompt_input(char const *message, char *buff) {
     return -1;
 }
 
-int prompt_input_ver2(char const *message, char *buff) {
-    memset(buff, 0, sizeof(buff));
-    printf("%s", message);
-    fgets(buff, sizeof(buff), stdin);
-    int index = strlen(buff) - 1;
-
-    if (buff[index] == '\n' && buff[index + 1] == '\0') {
-        buff[index] = '\0';
-        return index;
-    }
-
-    return -1;
-}
-
-int prompt_input_ver3(char const *message, char *buff, int length) {
+int prompt_input_ver2(char const *message, char *buff, int length) {
     memset(buff, 0, length);
     printf("%s", message);
     fgets(buff, length, stdin);
