@@ -43,7 +43,7 @@ typedef struct room_ {
 
 int prompt_input(char const *message, char *buff); // Cấp phát động bộ nhớ cho buff
 int prompt_input_ver2(char const *message, char *buff);// Buff bộ nhớ cố định 
-
+int prompt_input_ver3(char const *message, char *buff, int length);// Buff bộ nhớ cố định 
 
 void str_trim_lf(char *arr);
 

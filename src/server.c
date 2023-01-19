@@ -54,11 +54,12 @@ int auth_screen(Client *client, char *buff_out) {
     char buff[BUFF_SIZE] = {0};
     // get type
     sscanf(buff_out, "%d", &type);
+    printf("Message: %s\n", buff_out);
     if (type != SIGN_IN && type != SIGN_UP && type != SIGN_OUT) return 0;
 
     if (type != SIGN_OUT) {
         sscanf(buff_out, "%d %s %s", &type, acc->username, acc->password);
-        printf("%s %s\n", acc->username, acc->password);
+        printf("Username: %s - Password: %s\n", acc->username, acc->password);
     } else {
         sscanf(buff_out, "%d %s", &type, acc->username);
         printf("Sign out: %s\n", acc->username);
@@ -70,33 +71,35 @@ int auth_screen(Client *client, char *buff_out) {
             if (node == NULL) {
                 printf("Login failed\n");
                 success_flag = 0;
+                break;
             }
 
-            Account * findedAcc = (Account *) jval_v(node->val);
-            if (strcmp(findedAcc->password, acc->password) != 0) {
+            Account * foundAcc = (Account *) jval_v(node->val);
+            if (strcmp(foundAcc->password, acc->password) != 0) {
                 printf("Login failed\n");
                 success_flag = 0;
+                break;
             }
 
-            printf("%s has logined\n", acc->username);
+            printf("%s has signed in\n", acc->username);
             // copy user name into clients Lists
-            node = jrb_find_int(clients, findedAcc->user_id); // check use_id is exits
+            node = jrb_find_int(clients, foundAcc->user_id); // check use_id is exits
             if (node == NULL) {
                 // find node have same sockfd
-                JRB finded = NULL;
+                JRB found = NULL;
                 jrb_traverse(node, clients) {
                     Client *cli = (Client *) jval_v(node->val);
                     if (cli->sockfd == client->sockfd) {
-                        finded = node;
+                        found = node;
                         break;
                     }
                 }
 
-                if (finded != NULL) {
-                    Client *cli = (Client *) jval_v(finded->val);
-                    finded->key = new_jval_i(findedAcc->user_id);
-                    cli->id = findedAcc->user_id;
-                    strcpy(cli->username, findedAcc->username);
+                if (found != NULL) {
+                    Client *cli = (Client *) jval_v(found->val);
+                    found->key = new_jval_i(foundAcc->user_id);
+                    cli->id = foundAcc->user_id;
+                    strcpy(cli->username, foundAcc->username);
                 } else success_flag = 0;
             } else success_flag = 0;
             break;
@@ -528,8 +531,7 @@ void *handle_client(void *arg) {
         bzero(buff_out, sizeof(buff_out));
         int received = 0;
         if (recv(cli->sockfd, buff_out, sizeof(buff_out), 0) <= 0) break; // exit
-        printf("received: %d; buffsize:  %ld\n", received, strlen(buff_out));
-        printf("%s\n", buff_out);
+        printf("received bytes: %d; String length: %ld; String: %s\n", received, strlen(buff_out), buff_out);
 
         /* Read type of navigate screen control */
         if (strlen(buff_out) > 0) sscanf(buff_out, "%d", &type);
@@ -538,7 +540,7 @@ void *handle_client(void *arg) {
         switch (type) {
             case AUTH_SCREEN:
                 bzero(buff_out, sizeof(buff_out));
-                received = recv(cli->sockfd, buff_out, sizeof(buff_out), 0);
+                received = recvData(cli->sockfd, buff_out, sizeof(buff_out));
                 res = auth_screen(cli, buff_out);
                 if (res == EXIT ) leave_flag = 1;
                 break;

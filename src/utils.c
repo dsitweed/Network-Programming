@@ -33,6 +33,20 @@ int prompt_input_ver2(char const *message, char *buff) {
     return -1;
 }
 
+int prompt_input_ver3(char const *message, char *buff, int length) {
+    memset(buff, 0, length);
+    printf("%s", message);
+    fgets(buff, length, stdin);
+    int index = strlen(buff) - 1;
+
+    if (buff[index] == '\n' && buff[index + 1] == '\0') {
+        buff[index] = '\0';
+        return index;
+    }
+
+    return -1;
+}
+
 
 void str_trim_lf(char *arr) {
     int i = strlen(arr) - 1;

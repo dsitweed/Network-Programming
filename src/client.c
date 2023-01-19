@@ -69,8 +69,8 @@ int auth_menu(int sockfd) {
         switch (menu) {
             case 1:
                 printf("SIGN UP\n");
-                prompt_input_ver2("Nhap username: ", acc.username);
-                prompt_input_ver2("Nhap password: ", acc.password);
+                prompt_input_ver2("Input username: ", acc.username);
+                prompt_input_ver2("Input password: ", acc.password);
 
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d %s %s", SIGN_UP, acc.username, acc.password);
@@ -81,40 +81,40 @@ int auth_menu(int sockfd) {
                 if (err >= 0) {
                     response = atoi(buff);
                     if (response == SUCCESS) {
-                        printf("success\n");
+                        printf("Sign up SUCCESS\n");
                     }
                     if (response == FAILED) {
-                        printf("failed\n");
+                        printf("Sign up FAILED\n");
                     }
                 }
                 break;
             case 2:
                 printf("SIGN IN\n");
-                prompt_input_ver2("Nhap username: ", acc.username);
-                prompt_input_ver2("Nhap password: ", acc.password);
+                prompt_input_ver3("Input username: ", acc.username, 32);
+                prompt_input_ver3("Input password: ", acc.password, 32);
 
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d %s %s", SIGN_IN, acc.username, acc.password);
-                err = send(sockfd, buff, strlen(buff), 0);
+                err = sendData(sockfd, buff, strlen(buff));
 
                 bzero(buff, sizeof(buff));
-                err = recv(sockfd, buff, sizeof(buff), 0);
-                printf("%s - %ld\n", buff, strlen(buff));
+                err = recvData(sockfd, buff, sizeof(buff));
+                // printf("Received string: %s - String length: %ld\n", buff, strlen(buff));
                 if (err >= 0) {
                     response = atoi(buff);
                     if (response == SUCCESS) {
-                        printf("success\n");
+                        printf("Server responded SUCCESS\n\n");
                         strcpy(clientName, acc.username);
                         return 1;
                     }
                     if (response == FAILED) {
-                        printf("failed\n");
+                        printf("Server responded FAILED\n\n");
                     }
                 } else
                     printf("Error\n");
                 break;
             case 3:
-                printf("EXIT\n");
+                printf("\nEXIT\n");
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d %s", SIGN_OUT, clientName);
                 err = send(sockfd, buff, strlen(buff), 0);
