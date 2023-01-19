@@ -1,17 +1,17 @@
-auth account:
-signin username password
-signup username password
-sigout username
-
-
-Tree clients node
+## Lưu trữ trong chương trình đang chạy
+JRB Tree clients node (Lưu các user đang online)
 key: when thread connect to server auto set id
 value: struct Client
 
 
-Tree accounts node
+JRB Tree accounts node (Lưu tất cả các account)
 key: username
 value: struct Account
+
+JRB Tree rooms (Lưu tất cả các rooms)
+key:
+value: 
+
 
 Account *acc = (Account *) malloc(sizeof(Account));
 
@@ -20,47 +20,48 @@ jrb_insert_str(accounts, acc->username, new_jval_v(acc));
 Account * findedAcc = (Account *) jval_v(node->val);
 
 <!-- BUG -->
-BUG:
-- yêu cầu chọn menu là int nhưng nhập vào string treo luôn 
-- Client thoat ra -> core dump (Ở phần chat room)
-- Gửi tin dài bị ngắt
-- khi exit rồi bị in thừa ra 2 dòng 
+## BUG:
+0. yêu cầu chọn menu là int nhưng nhập vào string treo luôn 
+
+1. Client sau khi thoát chat bị in thừa dòng (lỗi có thể do chưa tắt thread nhiệm vụ ghi - chưa tìm ra giải pháp mới để khắc phục)
+- Tần suất xuất hiện: lúc có lúc không (ko thể kiểm soát)
+![TH_1](./BUG_IMG/bug1_img1.png)
+![TH_1](./BUG_IMG/bug1_img2.png)
+
+2. Đang chat (PVP - chat in ROOM chưa thử) // Đã FIX
+- thoát bằng cách Ctrl + C -> server core dump luôn (Chưa nghĩ ra tình huống sửa)
+- Tuy nhiên thoát bằng cách gõ 'exit' vẫn thoát bình thường
+
+3. Chat gửi nhiều bị ngắt thành 2 lần chat (Chưa nghĩ ra lý do và hướng fix) // Đã FIX
+- Do tách nhiệm vụ đọc input từ bàn phím vào thành function prompt_input_ver2 
+- Nhưng hàm bị tự lặp câu lệnh printf 1 cách khó hiểu (hoặc lặp cả hàm) - khó hiểu
+-> giải quyết bằng cách viết trực tiếp không gọi hàm ngoài 
 <!-- BUG -->
 
-<!-- GHi chus -->
-- delete room, delete guest se o trong man hinh chat 
+<!-- GHi chú -->
 
+## Protocol:
+- Trong phần 2 chức năng của báo cáo
 
-Protocol:
-Auth protocol:
-type user_name password
+[Link báo cáo - Quyền Edit](https://docs.google.com/presentation/d/1OZ27YXRjhlMyz_se05yAO7Ovmwzghj3y/edit?usp=sharing&ouid=107276978507869957770&rtpof=true&sd=true)
 
-Select_room_protocol:
-type room_name owner_name
+### accounts.txt format
 
-accounts.txt format
 username password id_user
 
-rooms.txt format
+### rooms.txt format
+
 roomName ownerName id_owner num_guest
-id_owner (có thể thay đổi vị trí)
+
+id_owner
+
 id_guest1
+
 id_getst2
+
 ...
-roomName2 ownerName2 id_owner2 num_guest
 
-(Không cần Type điều hướng đầu )
-chat với PVP
-destId mess
+## Các hướng phát triển tiếp:
+`#` Gửi file
 
-chat group 
-group_name mess
-
-
-Lưu trữ trong chương trình khi đang chạy:
-JRB tree rooms
-- Lưu các rooms
-- Nếu chat PVP thì lấy thông tin recv_id từ thông tin client gửi lên server luôn 
-
-Các hướng phát triển tiếp:
-- Lưu trữ các đoạn chat của PVP - Hiển thị lên màn hình
+`#` Lưu trữ các đoạn chat của PVP - Hiển thị lên màn hình
