@@ -22,7 +22,10 @@ typedef struct client {
     int sockfd;
     int id;
     char username[CLIENT_NAME_LEN];
-    int ready_chat; // is ready to chat ?
+    int ready_chat; // ready_chat = 1 khi tự mình gửi yêu cầu chat PVP hoặc join_room
+    
+    char with_room[ROOM_NAME_LEN]; // Sau khi join_room lưu hiện tại đang ở room nào
+    int with_id;
 } Client; 
 
 typedef struct account_ {
@@ -38,7 +41,7 @@ typedef struct room_ {
     int owner_id;
     // JRB list_guest; // Cực kì cẩn thận khi đọc list_guest rất hay bị lỗi do list JRB ko sạch
     int arr_list_guest[MAX_GUEST_IN_ROOM];
-    int number_guest; // max near 300 guest with 1024 bytes
+    int number_member; // max near 300 guest with 1024 bytes
 } Room;
 
 int prompt_input(char const *message, char *buff); // Cấp phát động bộ nhớ cho buff
@@ -68,5 +71,7 @@ int config_server(int *fd, struct sockaddr_in *addr);
 int sendData(int sockfd, char *data, int len);
 
 int recvData(int sockfd, char *data, int len);
+
+int len_of_number(int number);
 
 #endif  // UTILS_H

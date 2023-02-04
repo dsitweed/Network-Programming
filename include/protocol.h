@@ -1,7 +1,7 @@
 #ifndef protocol
 #define protocol
 enum msg_type {
-    SIGN_IN,
+    SIGN_IN, // SIGN_IN USER_NAME PASS
     SIGN_UP,
     SIGN_OUT,
     CREATE_NEW_ROOM,
@@ -11,8 +11,11 @@ enum msg_type {
     INVITE_JOIN_ROOM,
     SHOW_LIST_ROOMS,
     SHOW_LIST_USERS, // user is online - logined
+    CONNECT_PVP,
     PVP_CHAT,
-    CONTACT,
+    ROOM_CHAT,
+    OUT_CHAT,
+    SHARE_FILE,
 
     AUTH_SCREEN,
     SELECT_ROOM_SCREEN,
