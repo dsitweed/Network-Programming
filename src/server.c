@@ -250,7 +250,7 @@ void *handle_client(void *arg) {
             join_room(cli, buff_out);
             break;
         case OUT_ROOM:
-            out_room(cli, buff_out); // đang phát triển chưa tích hợp vào
+            out_room(cli, buff_out);
             break;
         case CONNECT_PVP:
             connect_PVP(cli, buff_out);
@@ -529,7 +529,6 @@ int join_room(Client* client, char* req) {
 }
 
 int out_room(Client* client, char* req) {
-    /*
     
     JRB node = NULL;
     int action = -1;
@@ -548,6 +547,12 @@ int out_room(Client* client, char* req) {
             if (client->id == room->arr_list_guest[i]) break;
         }
 
+        if ((i == room->number_member) || (i == 0)) {// nếu không tìm thấy, hoặc là owner
+            send_response(client->sockfd, FAILED, "OUT ROOM FAILED\n");
+            printf("OUT ROOM FAILED\n");
+            return 0;
+        }
+        
         room->number_member--;// số thành viên giảm 1
         // xóa và dịch các phần tử phía sau vị trí xóa lên
         for (i; i < room->number_member; i++) {
@@ -558,7 +563,6 @@ int out_room(Client* client, char* req) {
         printf("OUT ROOM SUCCESS\n");
     }
 
-    */
     return 1;
 }
 
