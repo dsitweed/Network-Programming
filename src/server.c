@@ -574,6 +574,7 @@ int room_chat(Client* client, char* req) {
     pthread_mutex_lock(&clients_mutex);
     sscanf(req, "%d%s", &action, room_name);
     strcpy(message, req + len_of_number(action) + strlen(room_name) + 2);// get message
+    printf("received: %s %s\n", room_name, message);
 
     node = jrb_find_str(rooms, room_name);
     if (node == NULL) {

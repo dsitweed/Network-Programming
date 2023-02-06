@@ -398,14 +398,12 @@ void send_msg_handler() {
             message[index] = '\0';
         }
 
-        sscanf(message, "%s", action);
-
-        if (strcasecmp(action, "exit") == 0) {
+        if (strcasecmp(message, "exit") == 0) {
             sprintf(buffer, "%d", OUT_CHAT);
             sendData(sockfd, buffer, strlen(buffer));
             exit_flag = 1;
             break;
-        } else if((strcasecmp(action, "out_room") == 0) && (typeChat == JOIN_ROOM)) {
+        } else if((strcasecmp(message, "out_room") == 0) && (typeChat == JOIN_ROOM)) {
             sprintf(buffer, "%d %s", OUT_ROOM, with.with_room);
             sendData(sockfd, buffer, strlen(buffer));
             exit_flag = 1;
