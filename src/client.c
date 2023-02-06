@@ -429,6 +429,8 @@ void recv_msg_handler() {
     int received = 0;
 
     while (1) {
+        memset(message, 0, sizeof(message));
+        
         int action_flag = -1;
         received = recvData(sockfd, message, sizeof(message));
         if (received <= 0) {// have error
@@ -444,6 +446,7 @@ void recv_msg_handler() {
             printf("> %s\n", "HAVE ERROR\n");
             break;
         }
+
         if (action_flag == SUCCESS) continue;
 
         clear_line();
@@ -451,6 +454,5 @@ void recv_msg_handler() {
         printf("> You: ");
 
         fflush(stdout);
-        memset(message, 0, sizeof(message));
     }
 }

@@ -103,7 +103,7 @@ int main(int argc, char const *argv[]) {
         return EXIT_FAILURE;
     }
 
-    char *IP = "127.0.0.1";
+    char *IP = "0.0.0.0";
     int PORT = atoi(argv[1]);
     int option = 1;
     int listenfd = 0, connfd = 0;
