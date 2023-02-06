@@ -152,8 +152,9 @@ int select_room_menu(int sockfd) {
             "3. Join room by name \n"
             "4. Show list users \n"
             "5. Chat PvP with 1 user by id \n"
-            "6. Sign out of chat room \n"
-            "Your choice (1-6): ");
+            "6. Out room by name\n"
+            "7. Sign out of chat room \n"
+            "Your choice (1-7): ");
         scanf("%d%*c", &menu);
         switch (menu) {
             case 1:
@@ -255,7 +256,28 @@ int select_room_menu(int sockfd) {
                 } else printf (RED "HAVE ERROR\n" RESET);
                 break;
             }
-            case 6:
+            case 6: {
+                int action = -1;
+                char room_name[ROOM_NAME_LEN] = {0};
+                printf("Out room by name\n");
+                prompt_input_ver2("Input room name: ", room_name, sizeof(with.with_room));
+
+                bzero(buff, sizeof(buff));
+                sprintf(buff, "%d %s", OUT_ROOM, room_name);
+                send(sockfd, buff, strlen(buff), 0);
+                
+                // Received response
+                bzero(buff, sizeof(buff));
+                err = recvData(sockfd, buff, sizeof(buff));
+                if (err > 0) {
+                    sscanf(buff, "%d", &action);
+                    if (action == SUCCESS) printf (GRN "OUT room success\n" RESET);
+                    if (action == FAILED) printf (RED "OUT room failed\n" RESET);
+                } else printf (RED "HAVE ERROR\n" RESET);
+
+                break;
+            }
+            case 7:
                 {int action = -1;
                 bzero(buff, sizeof(buff));
                 sprintf(buff, "%d %s", SIGN_OUT, clientName);
@@ -276,7 +298,7 @@ int select_room_menu(int sockfd) {
                 printf("Please select valid options\n");
                 break;
         }  // end switch
-    } while (menu != 6);
+    } while (menu != 7);
     // if (action_flag == EXIT) return EXIT;
     // if (action_flag == PVP_CHAT) return CONNECT_PVP;
     // if (action_flag == JOIN_ROOM) return JOIN_ROOM;
@@ -365,6 +387,7 @@ void signal_handler(int sig) {
 void send_msg_handler() {
     char message[BUFF_SIZE] = {0};
     char buffer[BUFF_SIZE * 2] = {0};  // = message + name of user + 3 (for 3 time \0)
+    char action[10] = {0};
 
     while (1) {
         printf("> You: ");
@@ -375,9 +398,16 @@ void send_msg_handler() {
             message[index] = '\0';
         }
 
-        if (strcasecmp(message, "exit") == 0) {
+        sscanf(message, "%s", action);
+
+        if (strcasecmp(action, "exit") == 0) {
             sprintf(buffer, "%d", OUT_CHAT);
-            sendData(sockfd,buffer, strlen(buffer));
+            sendData(sockfd, buffer, strlen(buffer));
+            exit_flag = 1;
+            break;
+        } else if((strcasecmp(action, "out_room") == 0) && (typeChat == JOIN_ROOM)) {
+            sprintf(buffer, "%d %s", OUT_ROOM, with.with_room);
+            sendData(sockfd, buffer, strlen(buffer));
             exit_flag = 1;
             break;
         } else if (typeChat == CONNECT_PVP) {
