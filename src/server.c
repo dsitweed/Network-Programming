@@ -250,7 +250,7 @@ void *handle_client(void *arg) {
             join_room(cli, buff_out);
             break;
         case OUT_ROOM:
-            out_room(cli, buff_out); // đang phát triển chưa tích hợp vào
+            out_room(cli, buff_out);
             break;
         case CONNECT_PVP:
             connect_PVP(cli, buff_out);
